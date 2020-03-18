@@ -41,7 +41,28 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
         $merchant_key = Monri::getMerchantKey();
         $checkdigest = hash('sha512', $merchant_key . $calculated_url);
 
-        $cart = new Cart($_GET['order_number']);
+        $cart = new Cart(str_replace('cart_', '', $_GET['order_number']));
+
+        if(false) {
+            $inspect = [
+                'merchant_key' => $merchant_key,
+                'check_digest' => $checkdigest,
+                'digest' => $digest,
+                'same_digest' => $checkdigest == $digest,
+                'full_url' => $full_url,
+                'url' => $url,
+                'port' => $_SERVER['SERVER_PORT'],
+                'server_name' => $_SERVER['SERVER_NAME'],
+                'request_uri' => $_SERVER['REQUEST_URI'],
+                'calculated_url' => $calculated_url,
+                'self' => $_SERVER['PHP_SELF'],
+                'url_parsed' => $url_parsed
+            ];
+            echo '<pre>' . var_export($inspect, true) . '</pre>';
+            die();
+            $cart = $this->context->cart;
+        }
+
         if ($checkdigest != $digest) {
             $this->setTemplate('module:monri/views/templates/front/error.tpl');
         } else {
@@ -62,23 +83,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
             );
         }
 
-//        $inspect = [
-//            'merchant_key' => $merchant_key,
-//            'check_digest' => $checkdigest,
-//            'digest' => $digest,
-//            'same_digest' => $checkdigest == $digest,
-//            'full_url' => $full_url,
-//            'url' => $url,
-//            'port' => $_SERVER['SERVER_PORT'],
-//            'server_name' => $_SERVER['SERVER_NAME'],
-//            'request_uri' => $_SERVER['REQUEST_URI'],
-//            'calculated_url' => $calculated_url,
-//            'self' => $_SERVER['PHP_SELF'],
-//            'url_parsed' => $url_parsed
-//        ];
-//        echo '<pre>' . var_export($inspect, true) . '</pre>';
-//        die();
-//        $cart = $this->context->cart;
+
     }
 
     private function resolveProtocol()
@@ -96,7 +101,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
     private function resolvePort()
     {
         $port = $_SERVER['SERVER_PORT'];
-        if ($port === '') {
+        if ($port === '' || $port === '80' || $port === '443') {
             return '';
         } else {
             return ":$port";
