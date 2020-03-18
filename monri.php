@@ -1,28 +1,4 @@
 <?php
-/*
-* 2007-2015 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author PrestaShop SA <contact@prestashop.com>
-*  @copyright  2007-2015 PrestaShop SA
-*  @license    http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*/
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
@@ -55,7 +31,7 @@ class Monri extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = array('validation');
+        $this->controllers = ['validation', 'success', 'cancel'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
@@ -117,9 +93,7 @@ class Monri extends PaymentModule
         }
 
         $payment_options = [
-            $this->getExternalPaymentOption(),
-//            $this->getEmbeddedPaymentOption(),
-//            $this->getIframePaymentOption(),
+            $this->getExternalPaymentOption($params),
         ];
 
         return $payment_options;
@@ -151,192 +125,220 @@ class Monri extends PaymentModule
         return false;
     }
 
-    public function getExternalPaymentOption()
+    public function getExternalPaymentOption($params)
     {
+
         $externalOption = new PaymentOption();
-        $externalOption->setCallToActionText($this->l('Pay external'))
-//            ->setAction($this->context->link->getModuleLink($this->name, 'validation', array(), true))
-            ->setAction('https://ipgtest.monri.com/v2/form')
-            ->setInputs(array (
-                'utf8' =>
-                    array (
-                        'name' => 'utf8',
-                        'type' => 'hidden',
-                        'value' => '✓',
-                    ),
-                'authenticity_token' =>
-                    array (
-                        'name' => 'authenticity_token',
-                        'type' => 'hidden',
-                        'value' => '7db11ea5d4a1af32421b564c79b946d1ead3daf0',
-                    ),
-                'ch_full_name' =>
-                    array (
-                        'name' => 'ch_full_name',
-                        'type' => 'hidden',
-                        'value' => 'John Doe',
-                    ),
-                'ch_address' =>
-                    array (
-                        'name' => 'ch_address',
-                        'type' => 'hidden',
-                        'value' => 'Street 15',
-                    ),
-                'ch_city' =>
-                    array (
-                        'name' => 'ch_city',
-                        'type' => 'hidden',
-                        'value' => 'Old Town',
-                    ),
-                'ch_zip' =>
-                    array (
-                        'name' => 'ch_zip',
-                        'type' => 'hidden',
-                        'value' => '123bnm789',
-                    ),
-                'ch_country' =>
-                    array (
-                        'name' => 'ch_country',
-                        'type' => 'hidden',
-                        'value' => 'US',
-                    ),
-                'ch_phone' =>
-                    array (
-                        'name' => 'ch_phone',
-                        'type' => 'hidden',
-                        'value' => '00-123 456-7',
-                    ),
-                'ch_email' =>
-                    array (
-                        'name' => 'ch_email',
-                        'type' => 'hidden',
-                        'value' => 'email@email.com',
-                    ),
-                'order_info' =>
-                    array (
-                        'name' => 'order_info',
-                        'type' => 'hidden',
-                        'value' => 'snowmaster 3000',
-                    ),
-                'amount' =>
-                    array (
-                        'name' => 'amount',
-                        'type' => 'hidden',
-                        'value' => '100',
-                    ),
-                'order_number' =>
-                    array (
-                        'name' => 'order_number',
-                        'type' => 'hidden',
-                        'value' => '751bcc3deaa2ae5',
-                    ),
-                'currency' =>
-                    array (
-                        'name' => 'currency',
-                        'type' => 'hidden',
-                        'value' => 'NGN',
-                    ),
-                'transaction_type' =>
-                    array (
-                        'name' => 'transaction_type',
-                        'type' => 'hidden',
-                        'value' => 'purchase',
-                    ),
-                'number_of_installments' =>
-                    array (
-                        'name' => 'number_of_installments',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'cc_type_for_installments' =>
-                    array (
-                        'name' => 'cc_type_for_installments',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'installments_disabled' =>
-                    array (
-                        'name' => 'installments_disabled',
-                        'type' => 'hidden',
-                        'value' => 'false',
-                    ),
-                'force_cc_type' =>
-                    array (
-                        'name' => 'force_cc_type',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'moto' =>
-                    array (
-                        'name' => 'moto',
-                        'type' => 'hidden',
-                        'value' => 'false',
-                    ),
-                'digest' =>
-                    array (
-                        'name' => 'digest',
-                        'type' => 'hidden',
-                        'value' => '85b1627572a629b275789c717b81b5a8b3bc1a53ceda5cb3566d834818224dc9c636227968736803817a0962eac217e7a208ce27e887e7b4cf99884b8cc7940a',
-                    ),
-                'language' =>
-                    array (
-                        'name' => 'language',
-                        'type' => 'hidden',
-                        'value' => 'en',
-                    ),
-                'tokenize_pan_until' =>
-                    array (
-                        'name' => 'tokenize_pan_until',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'custom_params' =>
-                    array (
-                        'name' => 'custom_params',
-                        'type' => 'hidden',
-                        'value' => '{a:b, c:d}',
-                    ),
-                'tokenize_pan' =>
-                    array (
-                        'name' => 'tokenize_pan',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'tokenize_pan_offered' =>
-                    array (
-                        'name' => 'tokenize_pan_offered',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'tokenize_brands' =>
-                    array (
-                        'name' => 'tokenize_brands',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'whitelisted_pan_tokens' =>
-                    array (
-                        'name' => 'whitelisted_pan_tokens',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'custom_attributes' =>
-                    array (
-                        'name' => 'custom_attributes',
-                        'type' => 'hidden',
-                        'value' => '',
-                    ),
-                'form' =>
-                    array (
-                        'name' => 'form',
-                        'type' => 'hidden',
-                        'value' => 'Submit to WebPay form',
-                    ),
-            ))
-            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
-            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/payment.jpg'));
+        $customer = $this->context->customer;
+        $cart = $this->context->cart;
+        $mode = Configuration::get(self::KEY_MODE);
+        $authenticity_token = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+        $merchant_key = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
+        $form_url = $mode == self::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+
+        $address = new Address($cart->id_address_delivery);
+
+        $currency = new Currency($cart->id_currency);
+        $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
+        $order_number = "" . $cart->id;
+
+
+        $inputs = [
+            'utf8' =>
+                [
+                    'name' => 'utf8',
+                    'type' => 'hidden',
+                    'value' => '✓',
+                ],
+            'authenticity_token' =>
+                [
+                    'name' => 'authenticity_token',
+                    'type' => 'hidden',
+                    'value' => $authenticity_token
+                ],
+            'ch_full_name' =>
+                [
+                    'name' => 'ch_full_name',
+                    'type' => 'hidden',
+                    'value' => "{$customer->firstname} {$customer->lastname}"
+                ],
+            'ch_address' =>
+                [
+                    'name' => 'ch_address',
+                    'type' => 'hidden',
+                    'value' => $address->address1
+                ],
+            'ch_city' =>
+                [
+                    'name' => 'ch_city',
+                    'type' => 'hidden',
+                    'value' => $address->city
+                ],
+            'ch_zip' =>
+                [
+                    'name' => 'ch_zip',
+                    'type' => 'hidden',
+                    'value' => $address->postcode
+                ],
+            'ch_country' =>
+                [
+                    'name' => 'ch_country',
+                    'type' => 'hidden',
+                    'value' => $address->country
+                ],
+            'ch_phone' =>
+                [
+                    'name' => 'ch_phone',
+                    'type' => 'hidden',
+                    'value' => $address->phone
+                ],
+            'ch_email' =>
+                [
+                    'name' => 'ch_email',
+                    'type' => 'hidden',
+                    'value' => $customer->email
+                ],
+            'order_info' =>
+                [
+                    'name' => 'order_info',
+                    'type' => 'hidden',
+                    'value' => "Order {$cart->id}"
+                ],
+            'amount' =>
+                [
+                    'name' => 'amount',
+                    'type' => 'hidden',
+                    'value' => $amount
+                ],
+            'order_number' =>
+                [
+                    'name' => 'order_number',
+                    'type' => 'hidden',
+                    // TODO: discuss this
+                    'value' => $order_number
+                ],
+            'currency' =>
+                [
+                    'name' => 'currency',
+                    'type' => 'hidden',
+                    'value' => $currency->iso_code,
+                ],
+            'transaction_type' =>
+                [
+                    'name' => 'transaction_type',
+                    'type' => 'hidden',
+                    // TODO: discuss this, how it's set?
+                    'value' => 'purchase',
+                ],
+            'number_of_installments' =>
+                [
+                    'name' => 'number_of_installments',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'cc_type_for_installments' =>
+                [
+                    'name' => 'cc_type_for_installments',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'installments_disabled' =>
+                [
+                    'name' => 'installments_disabled',
+                    'type' => 'hidden',
+                    'value' => 'false',
+                ],
+            'force_cc_type' =>
+                [
+                    'name' => 'force_cc_type',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'moto' =>
+                [
+                    'name' => 'moto',
+                    'type' => 'hidden',
+                    'value' => 'false',
+                ],
+            'digest' =>
+                [
+                    'name' => 'digest',
+                    'type' => 'hidden',
+                    'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $currency->iso_code),
+                ],
+            'language' =>
+                [
+                    'name' => 'language',
+                    'type' => 'hidden',
+                    'value' => 'en',
+                ],
+            'tokenize_pan_until' =>
+                [
+                    'name' => 'tokenize_pan_until',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'custom_params' =>
+                [
+                    'name' => 'custom_params',
+                    'type' => 'hidden',
+                    'value' => '{}',
+                ],
+            'tokenize_pan' =>
+                [
+                    'name' => 'tokenize_pan',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'tokenize_pan_offered' =>
+                [
+                    'name' => 'tokenize_pan_offered',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'tokenize_brands' =>
+                [
+                    'name' => 'tokenize_brands',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'whitelisted_pan_tokens' =>
+                [
+                    'name' => 'whitelisted_pan_tokens',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'custom_attributes' =>
+                [
+                    'name' => 'custom_attributes',
+                    'type' => 'hidden',
+                    'value' => '',
+                ],
+            'form' =>
+                [
+                    'name' => 'form',
+                    'type' => 'hidden',
+                    'value' => 'Submit to WebPay form',
+                ],
+        ];
+
+//        echo '<pre>' . var_export($inputs, true) . '</pre>';
+//        die();
+
+//        Correct test?
+        $externalOption->setCallToActionText($this->l('Pay using Monri'))
+            ->setAction("$form_url/v2/form")
+            ->setInputs($inputs);
+        // TODO: additional information on method type?
+//            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
+//            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/payment.jpg'));
 
         return $externalOption;
+    }
+
+    private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
+    {
+        return hash('sha512', $merchant_key . $order_number . $amount . $currency);
     }
 
     public function getEmbeddedPaymentOption()
@@ -394,13 +396,14 @@ class Monri extends PaymentModule
 
     private function updateConfiguration($mode)
     {
-        $value_key_merchant_key = Monri::keyForMonriMerchantKey($mode);
-        $value_key_authenticity_token = Monri::keyForMonriAuthenticityToken($mode);
-        $authenticity_token = Tools::getValue($value_key_merchant_key);
-        $merchant_key = (string)Tools::getValue($value_key_authenticity_token);
+        $update_keys = [
+            $mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST,
+            $mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+        ];
 
-        Configuration::updateValue($value_key_merchant_key, $merchant_key);
-        Configuration::updateValue($value_key_authenticity_token, $authenticity_token);
+        foreach ($update_keys as $key) {
+            Configuration::updateValue($key, (string)Tools::getValue($key));
+        }
     }
 
     private function validateConfiguration($mode)
@@ -608,5 +611,11 @@ class Monri extends PaymentModule
         $db = Db::getInstance();
         /** @noinspection SqlWithoutWhere SqlResolve */
         return $db->execute('DELETE FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` IN ("' . implode('", "', $names) . '") ');
+    }
+
+    public static function getMerchantKey()
+    {
+        $mode = Configuration::get(self::KEY_MODE);
+        return Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
     }
 }

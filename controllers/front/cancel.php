@@ -27,7 +27,7 @@
 /**
  * @since 1.5.0
  */
-class MonriValidationModuleFrontController extends ModuleFrontController
+class MonriCancelModuleFrontController extends ModuleFrontController
 {
     /**
      * @see FrontController::postProcess()
@@ -35,8 +35,6 @@ class MonriValidationModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         $cart = $this->context->cart;
-        echo '<pre>' . var_export($this->context, true) . '</pre>';
-        die();
         if ($cart->id_customer == 0 || $cart->id_address_delivery == 0 || $cart->id_address_invoice == 0 || !$this->module->active) {
             Tools::redirect('index.php?controller=order&step=1');
         }
