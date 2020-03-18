@@ -1,0 +1,17 @@
+{
+  "name": "monri",
+  "description": "Monri Prestashop Module",
+  "authors": [
+    {
+      "name": "Jasmin Suljić",
+      "email": "jasmin.suljic@monri.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.4"
+  },
+  "config": {
+    "preferred-install": "dist"
+  },
+  "type": "prestashop-module"
+}
