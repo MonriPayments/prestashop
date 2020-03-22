@@ -37,11 +37,12 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
         $url = $protocol . $_SERVER['SERVER_NAME'] . self::resolvePort() . dirname($_SERVER['REQUEST_URI']) . '/success';
         $full_url = $url . '?' . $_SERVER['QUERY_STRING'];
         $url_parsed = parse_url(preg_replace('/&digest=[^&]*/', '', $full_url));
-        $calculated_url = $url_parsed['scheme'] . '://' . $url_parsed['host'] . ($url_parsed['port'] == '' ? '' : ":" . $url_parsed['port']) . $url_parsed['path'] . '?' . $url_parsed['query'];
+        $port = isset($url_parsed['port']) ? $url_parsed['port']: '';
+        $calculated_url = $url_parsed['scheme'] . '://' . $url_parsed['host'] . ($port == '' ? '' : ":" . $port) . $url_parsed['path'] . '?' . $url_parsed['query'];
         $merchant_key = Monri::getMerchantKey();
         $checkdigest = hash('sha512', $merchant_key . $calculated_url);
-
-        $cart = new Cart(str_replace('cart_', '', $_GET['order_number']));
+        $parts = explode('_',$_GET['order_number'], 2);
+        $cart = new Cart($parts[0]);
 
         if(false) {
             $inspect = [
@@ -67,7 +68,34 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
             $this->setTemplate('module:monri/views/templates/front/error.tpl');
         } else {
             $total = (float)$cart->getOrderTotal(true, \Cart::BOTH);
-            $extra_vars = array();
+
+            $trx_fields = ['acquirer',
+                'amount',
+                'approval_code',
+                'authentication',
+                'cc_type',
+                'ch_full_name',
+                'currency',
+                'custom_params',
+                'enrollment',
+                'issuer',
+                'language',
+                'masked_pan',
+                'number_of_installments',
+                'order_number',
+                'response_code',
+                'digest',
+                'pan_token'
+            ];
+
+
+
+            $extra_vars = [];
+
+            foreach ($trx_fields as $field) {
+                $extra_vars[] = $_GET[$field];
+            }
+
             $currencyId = $cart->id_currency;
             $customer = new \Customer($cart->id_customer);
             // TODO: check if already approved

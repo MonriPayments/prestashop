@@ -140,7 +140,7 @@ class Monri extends PaymentModule
 
         $currency = new Currency($cart->id_currency);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $order_number = "cart_" . $cart->id;
+        $order_number = $cart->id."_".time();
 
         $inputs = [
             'utf8' =>
@@ -312,20 +312,14 @@ class Monri extends PaymentModule
                     'name' => 'custom_attributes',
                     'type' => 'hidden',
                     'value' => '',
-                ],
-            'form' =>
-                [
-                    'name' => 'form',
-                    'type' => 'hidden',
-                    'value' => 'Submit to WebPay form',
-                ],
+                ]
         ];
 
 //        echo '<pre>' . var_export($inputs, true) . '</pre>';
 //        die();
 
 //        Correct test?
-        $externalOption->setCallToActionText($this->l('Pay using Monri'))
+        $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
             ->setAction("$form_url/v2/form")
             ->setInputs($inputs);
         // TODO: additional information on method type?
@@ -415,12 +409,12 @@ class Monri extends PaymentModule
 
         // validating the input
         if (empty($merchant_key) || !Validate::isGenericName($merchant_key)) {
-            $output .= $this->displayError($this->l('Invalid Configuration value for Merchant Key Live'));
+            $output .= $this->displayError($this->l("Invalid Configuration value for Merchant Key $mode"));
         }
 
         // validating the input
         if (empty($authenticity_token) || !Validate::isGenericName($authenticity_token)) {
-            $output .= $this->displayError($this->l('Invalid Configuration value for Api Key Live'));
+            $output .= $this->displayError($this->l("Invalid Configuration value for Api Key $mode"));
         }
 
         return $output;
@@ -448,7 +442,7 @@ class Monri extends PaymentModule
                 if ($test_validate == null && $live_validate == null) {
                     $this->updateConfiguration(self::MODE_PROD);
                     $this->updateConfiguration(self::MODE_TEST);
-                    Configuration::updateValue('MONRI_MODE', $mode);
+                    Configuration::updateValue(self::KEY_MODE, $mode);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
                     $output .= $test_validate . $live_validate;
@@ -477,7 +471,7 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Merchant key for Test'),
-                    'name' => 'MONRI_MERCHANT_KEY_TEST',
+                    'name' => self::KEY_MERCHANT_KEY_TEST,
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
@@ -485,8 +479,8 @@ class Monri extends PaymentModule
                 ],
                 [
                     'type' => 'text',
-                    'label' => $this->l('Merchant key for Live'),
-                    'name' => 'MONRI_MERCHANT_KEY_LIVE',
+                    'label' => $this->l('Merchant key for Production'),
+                    'name' => self::KEY_MERCHANT_KEY_PROD,
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
@@ -514,15 +508,15 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Authenticity token for Test'),
-                    'name' => 'MONRI_AUTHENTICITY_TOKEN_TEST',
+                    'name' => self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
                 ],
                 [
                     'type' => 'text',
-                    'label' => $this->l('Authenticity token for Live'),
-                    'name' => 'MONRI_AUTHENTICITY_TOKEN_LIVE',
+                    'label' => $this->l('Authenticity token for Prod'),
+                    'name' => self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
@@ -575,7 +569,7 @@ class Monri extends PaymentModule
             $merchant_key_live = Configuration::get(self::KEY_MERCHANT_KEY_PROD);
             $merchant_authenticity_token_live = Configuration::get(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
 
-            $mode = Configuration::get('MONRI_MODE');
+            $mode = Configuration::get(self::KEY_MODE);
 
             $merchant_key_test = Configuration::get(self::KEY_MERCHANT_KEY_TEST);
             $merchant_authenticity_token_test = Configuration::get(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
@@ -593,7 +587,7 @@ class Monri extends PaymentModule
     }
 
     /**
-     * Removes Adyen settings from configuration table
+     * Removes Monri settings from configuration table
      *
      * @return bool
      */

@@ -1,11 +1,8 @@
 
 cd ..
 mkdir -p tmp/monri
-cp -r prestashop/ tmp/monri
-rm -rf tmp/monri/monri.zip
-rm -rf tmp/monri/.git
-rm -rf tmp/monri/.idea
-rm -rf tmp/monri/*.sh
+rm -rf tmp/monri
+rsync -r --exclude '.git' --exclude 'monri.zip' --exclude '.idea' --exclude 'docker-data' --exclude '*.sh' prestashop/ tmp/monri
 cd tmp
 zip -r monri.zip monri
 cd ..
