@@ -7,7 +7,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-class MonriConstants {
+class MonriConstants
+{
     const MODE_PROD = 'prod';
     const MODE_TEST = 'test';
     const KEY_MODE = 'MONRI_MODE';
@@ -15,6 +16,8 @@ class MonriConstants {
     const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
+    const KEY_MIN_INSTALLMENTS = 'KEY_MIN_INSTALLMENTS';
+    const KEY_MAX_INSTALLMENTS = 'KEY_MAX_INSTALLMENTS';
 }
 
 class Monri extends PaymentModule
@@ -232,7 +235,6 @@ class Monri extends PaymentModule
                 [
                     'name' => 'transaction_type',
                     'type' => 'hidden',
-                    // TODO: discuss this, how it's set?
                     'value' => 'purchase',
                 ],
             'number_of_installments' =>
@@ -315,23 +317,27 @@ class Monri extends PaymentModule
                 ]
         ];
 
-//        echo '<pre>' . var_export($inputs, true) . '</pre>';
-//        die();
+        $new_inputs = [];
+        foreach ($inputs as $k => $v) {
+            $new_inputs["monri_$k"] = [
+                'name' => "monri_" . $k,
+                'type' => 'hidden',
+                'value' => $v['value'],
+            ];
+        }
+
+        $new_inputs['monri_module_name'] = [
+            'name' => 'monri_module_name',
+            'type' => 'hidden',
+            'value' => 'monri',
+        ];
 
 //        Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
             ->setAction($form_url)
-            ->setInputs($inputs);
-        // TODO: additional information on method type?
-//            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
-//            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/payment.jpg'));
+            ->setInputs($new_inputs);
 
         return $externalOption;
-    }
-
-    private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
-    {
-        return hash('sha512', $merchant_key . $order_number . $amount . $currency);
     }
 
     private function updateConfiguration($mode)

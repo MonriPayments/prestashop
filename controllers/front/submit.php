@@ -38,6 +38,8 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
         $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
 
+        $prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
+
         $from_post = [
             'utf8',
             'authenticity_token',
@@ -74,9 +76,12 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             $inputs[$item] = [
                 'name' => $item,
                 'type' => 'hidden',
-                'value' => $_POST[$item]
+                'value' => $_POST[$prefix . '_' . $item]
             ];
         }
+
+//        echo '<pre>' . var_export($inputs, true) . '</pre>';
+//        die();
 
         $inputs['amount'] = [
             'name' => 'amount',
@@ -92,13 +97,8 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
         ];
 
-        foreach ($inputs as $k => $v) {
-            $this->context->smarty->assign("monri_$k", $v['value']);
-        }
-//        echo '<pre>' . var_export($_POST, true) . '</pre>';
-//        echo '<pre>' . var_export($inputs, true) . '</pre>';
-//
-//        die();
+        $this->context->smarty->assign("monri_inputs", $inputs);
+
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
         return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
