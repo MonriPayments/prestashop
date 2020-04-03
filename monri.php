@@ -31,7 +31,7 @@ class Monri extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = ['validation', 'success', 'cancel'];
+        $this->controllers = ['validation', 'success', 'cancel', 'submit'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
@@ -135,12 +135,13 @@ class Monri extends PaymentModule
         $authenticity_token = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
         $form_url = $mode == self::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+        $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
 
         $address = new Address($cart->id_address_delivery);
 
         $currency = new Currency($cart->id_currency);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $order_number = $cart->id."_".time();
+        $order_number = $cart->id . "_" . time();
 
         $inputs = [
             'utf8' =>
@@ -332,49 +333,6 @@ class Monri extends PaymentModule
     private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
     {
         return hash('sha512', $merchant_key . $order_number . $amount . $currency);
-    }
-
-    public function getEmbeddedPaymentOption()
-    {
-        $embeddedOption = new PaymentOption();
-        $embeddedOption->setCallToActionText($this->l('Pay embedded'))
-            ->setForm($this->generateForm())
-            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
-            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/payment.jpg'));
-
-        return $embeddedOption;
-    }
-
-    public function getIframePaymentOption()
-    {
-        $iframeOption = new PaymentOption();
-        $iframeOption->setCallToActionText($this->l('Pay iframe'))
-            ->setAction($this->context->link->getModuleLink($this->name, 'iframe', array(), true))
-            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
-            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/payment.jpg'));
-
-        return $iframeOption;
-    }
-
-    protected function generateForm()
-    {
-        $months = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $months[] = sprintf("%02d", $i);
-        }
-
-        $years = [];
-        for ($i = 0; $i <= 10; $i++) {
-            $years[] = date('Y', strtotime('+' . $i . ' years'));
-        }
-
-        $this->context->smarty->assign([
-            'action' => $this->context->link->getModuleLink($this->name, 'validation', array(), true),
-            'months' => $months,
-            'years' => $years,
-        ]);
-
-        return $this->context->smarty->fetch('module:monri/views/templates/front/payment_form.tpl');
     }
 
     private function updateConfiguration($mode)
