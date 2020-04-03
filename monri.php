@@ -2,8 +2,19 @@
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
+
 if (!defined('_PS_VERSION_')) {
     exit;
+}
+
+class MonriConstants {
+    const MODE_PROD = 'prod';
+    const MODE_TEST = 'test';
+    const KEY_MODE = 'MONRI_MODE';
+    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
+    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
+    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
+    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
 }
 
 class Monri extends PaymentModule
@@ -131,10 +142,10 @@ class Monri extends PaymentModule
         $externalOption = new PaymentOption();
         $customer = $this->context->customer;
         $cart = $this->context->cart;
-        $mode = Configuration::get(self::KEY_MODE);
-        $authenticity_token = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
-        $merchant_key = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
-        $form_url = $mode == self::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+        $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
         $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
 
         $address = new Address($cart->id_address_delivery);
@@ -204,12 +215,6 @@ class Monri extends PaymentModule
                     'type' => 'hidden',
                     'value' => "Order {$cart->id}"
                 ],
-            'amount' =>
-                [
-                    'name' => 'amount',
-                    'type' => 'hidden',
-                    'value' => $amount
-                ],
             'order_number' =>
                 [
                     'name' => 'order_number',
@@ -246,7 +251,7 @@ class Monri extends PaymentModule
                 [
                     'name' => 'installments_disabled',
                     'type' => 'hidden',
-                    'value' => 'false',
+                    'value' => 'true',
                 ],
             'force_cc_type' =>
                 [
@@ -259,12 +264,6 @@ class Monri extends PaymentModule
                     'name' => 'moto',
                     'type' => 'hidden',
                     'value' => 'false',
-                ],
-            'digest' =>
-                [
-                    'name' => 'digest',
-                    'type' => 'hidden',
-                    'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $currency->iso_code),
                 ],
             'language' =>
                 [
@@ -321,7 +320,7 @@ class Monri extends PaymentModule
 
 //        Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
-            ->setAction("$form_url/v2/form")
+            ->setAction($form_url)
             ->setInputs($inputs);
         // TODO: additional information on method type?
 //            ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
@@ -338,8 +337,8 @@ class Monri extends PaymentModule
     private function updateConfiguration($mode)
     {
         $update_keys = [
-            $mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST,
-            $mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+            $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST,
+            $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
         ];
 
         foreach ($update_keys as $key) {
@@ -380,18 +379,18 @@ class Monri extends PaymentModule
             return $output . $this->displayForm();
         } else {
             // get post values
-            $mode = (string)Tools::getValue(self::KEY_MODE);
+            $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
 
-            if ($mode != self::MODE_PROD && $mode != self::MODE_TEST) {
+            if ($mode != MonriConstants::MODE_PROD && $mode != MonriConstants::MODE_TEST) {
                 $output .= $this->displayError($this->l("Invalid Mode, expected: live or test got '$mode'"));
                 return $output . $this->displayForm();
             } else {
-                $test_validate = $this->validateConfiguration(self::MODE_TEST);
-                $live_validate = $mode == self::MODE_PROD ? $this->validateConfiguration(self::MODE_PROD) : null;
+                $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST);
+                $live_validate = $mode == MonriConstants::MODE_PROD ? $this->validateConfiguration(MonriConstants::MODE_PROD) : null;
                 if ($test_validate == null && $live_validate == null) {
-                    $this->updateConfiguration(self::MODE_PROD);
-                    $this->updateConfiguration(self::MODE_TEST);
-                    Configuration::updateValue(self::KEY_MODE, $mode);
+                    $this->updateConfiguration(MonriConstants::MODE_PROD);
+                    $this->updateConfiguration(MonriConstants::MODE_TEST);
+                    Configuration::updateValue(MonriConstants::KEY_MODE, $mode);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
                     $output .= $test_validate . $live_validate;
@@ -420,7 +419,7 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Merchant key for Test'),
-                    'name' => self::KEY_MERCHANT_KEY_TEST,
+                    'name' => MonriConstants::KEY_MERCHANT_KEY_TEST,
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
@@ -429,7 +428,7 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Merchant key for Production'),
-                    'name' => self::KEY_MERCHANT_KEY_PROD,
+                    'name' => MonriConstants::KEY_MERCHANT_KEY_PROD,
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
@@ -438,17 +437,17 @@ class Monri extends PaymentModule
                 [
                     'type' => 'radio',
                     'label' => $this->l('Test/Production Mode'),
-                    'name' => self::KEY_MODE,
+                    'name' => MonriConstants::KEY_MODE,
                     'class' => 't',
                     'values' => [
                         [
-                            'id' => self::MODE_PROD,
-                            'value' => self::MODE_PROD,
+                            'id' => MonriConstants::MODE_PROD,
+                            'value' => MonriConstants::MODE_PROD,
                             'label' => $this->l('Production')
                         ],
                         [
-                            'id' => self::MODE_TEST,
-                            'value' => self::MODE_TEST,
+                            'id' => MonriConstants::MODE_TEST,
+                            'value' => MonriConstants::MODE_TEST,
                             'label' => $this->l('Test')
                         ]
                     ],
@@ -457,7 +456,7 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Authenticity token for Test'),
-                    'name' => self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
+                    'name' => MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
@@ -465,7 +464,7 @@ class Monri extends PaymentModule
                 [
                     'type' => 'text',
                     'label' => $this->l('Authenticity token for Prod'),
-                    'name' => self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
+                    'name' => MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
@@ -507,30 +506,30 @@ class Monri extends PaymentModule
 
         if (Tools::isSubmit('submit' . $this->name)) {
             // get settings from post because post can give errors and you want to keep values
-            $merchant_key_live = (string)Tools::getValue(self::KEY_MERCHANT_KEY_PROD);
-            $merchant_authenticity_token_live = (string)Tools::getValue(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
+            $merchant_key_live = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_KEY_PROD);
+            $merchant_authenticity_token_live = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
 
-            $mode = (string)Tools::getValue(self::KEY_MODE);
+            $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
 
-            $merchant_key_test = (string)Tools::getValue(self::KEY_MERCHANT_KEY_TEST);
-            $merchant_authenticity_token_test = (string)Tools::getValue(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+            $merchant_key_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_KEY_TEST);
+            $merchant_authenticity_token_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         } else {
-            $merchant_key_live = Configuration::get(self::KEY_MERCHANT_KEY_PROD);
-            $merchant_authenticity_token_live = Configuration::get(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
+            $merchant_key_live = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_PROD);
+            $merchant_authenticity_token_live = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
 
-            $mode = Configuration::get(self::KEY_MODE);
+            $mode = Configuration::get(MonriConstants::KEY_MODE);
 
-            $merchant_key_test = Configuration::get(self::KEY_MERCHANT_KEY_TEST);
-            $merchant_authenticity_token_test = Configuration::get(self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+            $merchant_key_test = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_TEST);
+            $merchant_authenticity_token_test = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         }
 
         // Load current value
-        $helper->fields_value[self::KEY_MERCHANT_KEY_PROD] = $merchant_key_live;
-        $helper->fields_value[self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD] = $merchant_authenticity_token_live;
+        $helper->fields_value[MonriConstants::KEY_MERCHANT_KEY_PROD] = $merchant_key_live;
+        $helper->fields_value[MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD] = $merchant_authenticity_token_live;
 
-        $helper->fields_value[self::KEY_MERCHANT_KEY_TEST] = $merchant_key_test;
-        $helper->fields_value[self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST] = $merchant_authenticity_token_test;
-        $helper->fields_value[self::KEY_MODE] = $mode;
+        $helper->fields_value[MonriConstants::KEY_MERCHANT_KEY_TEST] = $merchant_key_test;
+        $helper->fields_value[MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST] = $merchant_authenticity_token_test;
+        $helper->fields_value[MonriConstants::KEY_MODE] = $mode;
 
         return $helper->generateForm($fields_form);
     }
@@ -543,11 +542,11 @@ class Monri extends PaymentModule
     private function removeConfigurationsFromDatabase()
     {
         $names = [
-            self::KEY_MODE,
-            self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
-            self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
-            self::KEY_MERCHANT_KEY_TEST,
-            self::KEY_MERCHANT_KEY_PROD
+            MonriConstants::KEY_MODE,
+            MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
+            MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
+            MonriConstants::KEY_MERCHANT_KEY_TEST,
+            MonriConstants::KEY_MERCHANT_KEY_PROD
         ];
 
         $db = Db::getInstance();
@@ -557,7 +556,7 @@ class Monri extends PaymentModule
 
     public static function getMerchantKey()
     {
-        $mode = Configuration::get(self::KEY_MODE);
-        return Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
     }
 }

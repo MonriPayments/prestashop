@@ -32,206 +32,84 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-
-        $inspect = $_POST;
-
-        $customer = $this->context->customer;
         $cart = $this->context->cart;
-        $mode = Configuration::get(self::KEY_MODE);
-        $authenticity_token = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : self::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
-        $merchant_key = Configuration::get($mode == self::MODE_PROD ? self::KEY_MERCHANT_KEY_PROD : self::KEY_MERCHANT_KEY_TEST);
-        $form_url = $mode == self::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
-        $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
-
-        $address = new Address($cart->id_address_delivery);
-
-        $currency = new Currency($cart->id_currency);
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $order_number = $cart->id . "_" . time();
+        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
 
-        $inputs = [
-            'utf8' =>
-                [
-                    'name' => 'utf8',
-                    'type' => 'hidden',
-                    'value' => '✓',
-                ],
-            'authenticity_token' =>
-                [
-                    'name' => 'authenticity_token',
-                    'type' => 'hidden',
-                    'value' => $authenticity_token
-                ],
-            'ch_full_name' =>
-                [
-                    'name' => 'ch_full_name',
-                    'type' => 'hidden',
-                    'value' => "{$customer->firstname} {$customer->lastname}"
-                ],
-            'ch_address' =>
-                [
-                    'name' => 'ch_address',
-                    'type' => 'hidden',
-                    'value' => $address->address1
-                ],
-            'ch_city' =>
-                [
-                    'name' => 'ch_city',
-                    'type' => 'hidden',
-                    'value' => $address->city
-                ],
-            'ch_zip' =>
-                [
-                    'name' => 'ch_zip',
-                    'type' => 'hidden',
-                    'value' => $address->postcode
-                ],
-            'ch_country' =>
-                [
-                    'name' => 'ch_country',
-                    'type' => 'hidden',
-                    'value' => $address->country
-                ],
-            'ch_phone' =>
-                [
-                    'name' => 'ch_phone',
-                    'type' => 'hidden',
-                    'value' => $address->phone
-                ],
-            'ch_email' =>
-                [
-                    'name' => 'ch_email',
-                    'type' => 'hidden',
-                    'value' => $customer->email
-                ],
-            'order_info' =>
-                [
-                    'name' => 'order_info',
-                    'type' => 'hidden',
-                    'value' => "Order {$cart->id}"
-                ],
-            'amount' =>
-                [
-                    'name' => 'amount',
-                    'type' => 'hidden',
-                    'value' => $amount
-                ],
-            'order_number' =>
-                [
-                    'name' => 'order_number',
-                    'type' => 'hidden',
-                    // TODO: discuss this
-                    'value' => $order_number
-                ],
-            'currency' =>
-                [
-                    'name' => 'currency',
-                    'type' => 'hidden',
-                    'value' => $currency->iso_code,
-                ],
-            'transaction_type' =>
-                [
-                    'name' => 'transaction_type',
-                    'type' => 'hidden',
-                    // TODO: discuss this, how it's set?
-                    'value' => 'purchase',
-                ],
-            'number_of_installments' =>
-                [
-                    'name' => 'number_of_installments',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'cc_type_for_installments' =>
-                [
-                    'name' => 'cc_type_for_installments',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'installments_disabled' =>
-                [
-                    'name' => 'installments_disabled',
-                    'type' => 'hidden',
-                    'value' => 'false',
-                ],
-            'force_cc_type' =>
-                [
-                    'name' => 'force_cc_type',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'moto' =>
-                [
-                    'name' => 'moto',
-                    'type' => 'hidden',
-                    'value' => 'false',
-                ],
-            'digest' =>
-                [
-                    'name' => 'digest',
-                    'type' => 'hidden',
-                    'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $currency->iso_code),
-                ],
-            'language' =>
-                [
-                    'name' => 'language',
-                    'type' => 'hidden',
-                    'value' => 'en',
-                ],
-            'tokenize_pan_until' =>
-                [
-                    'name' => 'tokenize_pan_until',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'custom_params' =>
-                [
-                    'name' => 'custom_params',
-                    'type' => 'hidden',
-                    'value' => '{}',
-                ],
-            'tokenize_pan' =>
-                [
-                    'name' => 'tokenize_pan',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'tokenize_pan_offered' =>
-                [
-                    'name' => 'tokenize_pan_offered',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'tokenize_brands' =>
-                [
-                    'name' => 'tokenize_brands',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'whitelisted_pan_tokens' =>
-                [
-                    'name' => 'whitelisted_pan_tokens',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'custom_attributes' =>
-                [
-                    'name' => 'custom_attributes',
-                    'type' => 'hidden',
-                    'value' => '',
-                ]
+        $from_post = [
+            'utf8',
+            'authenticity_token',
+            'ch_full_name',
+            'ch_address',
+            'ch_city',
+            'ch_zip',
+            'ch_country',
+            'ch_phone',
+            'ch_email',
+            'order_info',
+            'order_number',
+            'currency',
+            'transaction_type',
+            'number_of_installments',
+            'cc_type_for_installments',
+            'installments_disabled',
+            'force_cc_type',
+            'moto',
+            'language',
+            'tokenize_pan_until',
+            'custom_params',
+            'tokenize_pan',
+            'tokenize_pan_offered',
+            'tokenize_brands',
+            'whitelisted_pan_tokens',
+            'custom_attributes'
         ];
 
-        echo '<pre>' . var_export($inputs, true) . '</pre>';
 
-        $this->context->smarty->assign(['inputs' => $inputs]);
+        $inputs = [];
 
-        die();
+        foreach ($from_post as $item) {
+            $inputs[$item] = [
+                'name' => $item,
+                'type' => 'hidden',
+                'value' => $_POST[$item]
+            ];
+        }
+
+        $inputs['amount'] = [
+            'name' => 'amount',
+            'type' => 'hidden',
+            'value' => $amount
+        ];
+
+        $order_number = $inputs['order_number']['value'];
+
+        $inputs['digest'] = [
+            'name' => 'digest',
+            'type' => 'hidden',
+            'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
+        ];
+
+        foreach ($inputs as $k => $v) {
+            $this->context->smarty->assign("monri_$k", $v['value']);
+        }
+//        echo '<pre>' . var_export($_POST, true) . '</pre>';
+//        echo '<pre>' . var_export($inputs, true) . '</pre>';
+//
+//        die();
+        $this->context->smarty->assign('action', "$form_url/v2/form");
+
+        return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
 
     }
 
     private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
     {
+//        $d = $merchant_key . $order_number . $amount . $currency;
+//        var_dump($d);
+//        die();
         return hash('sha512', $merchant_key . $order_number . $amount . $currency);
     }
 }
