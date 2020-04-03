@@ -37,14 +37,14 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
         $url = $protocol . $_SERVER['SERVER_NAME'] . self::resolvePort() . dirname($_SERVER['REQUEST_URI']) . '/success';
         $full_url = $url . '?' . $_SERVER['QUERY_STRING'];
         $url_parsed = parse_url(preg_replace('/&digest=[^&]*/', '', $full_url));
-        $port = isset($url_parsed['port']) ? $url_parsed['port']: '';
+        $port = isset($url_parsed['port']) ? $url_parsed['port'] : '';
         $calculated_url = $url_parsed['scheme'] . '://' . $url_parsed['host'] . ($port == '' ? '' : ":" . $port) . $url_parsed['path'] . '?' . $url_parsed['query'];
         $merchant_key = Monri::getMerchantKey();
         $checkdigest = hash('sha512', $merchant_key . $calculated_url);
-        $parts = explode('_',$_GET['order_number'], 2);
+        $parts = explode('_', $_GET['order_number'], 2);
         $cart = new Cart($parts[0]);
 
-        if(false) {
+        if (false) {
             $inspect = [
                 'merchant_key' => $merchant_key,
                 'check_digest' => $checkdigest,
@@ -89,11 +89,14 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
             ];
 
 
-
             $extra_vars = [];
 
             foreach ($trx_fields as $field) {
                 $extra_vars[] = $_GET[$field];
+            }
+
+            if (isset($extra_vars['order_number'])) {
+                $extra_vars['transaction_id'] = $extra_vars['order_number'];
             }
 
             $currencyId = $cart->id_currency;

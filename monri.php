@@ -61,6 +61,7 @@ class Monri extends PaymentModule
 
     public function install()
     {
+
         if (!$this->isPrestaShopSupportedVersion()) {
             $this->_errors[] = $this->l('Sorry, this module is not compatible with your version.');
             return false;
@@ -83,7 +84,6 @@ class Monri extends PaymentModule
 
     public function hookPaymentOptions($params)
     {
-
         if (!$this->active) {
             return;
         }
@@ -377,16 +377,6 @@ class Monri extends PaymentModule
         return $this->context->smarty->fetch('module:monri/views/templates/front/payment_form.tpl');
     }
 
-    private static function keyForMonriMerchantKey($mode)
-    {
-        return "MONRI_MERCHANT_KEY_" . strtoupper($mode);
-    }
-
-    private static function keyForMonriAuthenticityToken($mode)
-    {
-        return "MONRI_AUTHENTICITY_TOKEN_" . strtoupper($mode);
-    }
-
     private function updateConfiguration($mode)
     {
         $update_keys = [
@@ -422,6 +412,7 @@ class Monri extends PaymentModule
 
     /**
      * shows the configuration page in the back-end
+     * @noinspection PhpUnused
      */
     public function getContent()
     {
@@ -431,7 +422,7 @@ class Monri extends PaymentModule
             return $output . $this->displayForm();
         } else {
             // get post values
-            $mode = (string)Tools::getValue('MONRI_MODE');
+            $mode = (string)Tools::getValue(self::KEY_MODE);
 
             if ($mode != self::MODE_PROD && $mode != self::MODE_TEST) {
                 $output .= $this->displayError($this->l("Invalid Mode, expected: live or test got '$mode'"));
