@@ -33,6 +33,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         $digest = $_GET['digest'];
+        $status = $_GET['status'];
         $protocol = self::resolveProtocol();
         $url = $protocol . $_SERVER['SERVER_NAME'] . self::resolvePort() . dirname($_SERVER['REQUEST_URI']) . '/success';
         $full_url = $url . '?' . $_SERVER['QUERY_STRING'];
@@ -64,7 +65,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
             $cart = $this->context->cart;
         }
 
-        if ($checkdigest != $digest) {
+        if ($checkdigest != $digest && $status == "approved") {
             $this->setTemplate('module:monri/views/templates/front/error.tpl');
         } else {
             $total = (float)$cart->getOrderTotal(true, \Cart::BOTH);
@@ -85,14 +86,17 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
                 'order_number',
                 'response_code',
                 'digest',
-                'pan_token'
+                'pan_token',
+                'original_amount'
             ];
 
 
             $extra_vars = [];
 
             foreach ($trx_fields as $field) {
-                $extra_vars[] = $_GET[$field];
+                if(isset($_GET[$field])) {
+                    $extra_vars[] = $_GET[$field];
+                }               
             }
 
             if (isset($extra_vars['order_number'])) {
@@ -101,11 +105,18 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
 
             $currencyId = $cart->id_currency;
             $customer = new \Customer($cart->id_customer);
+            $amount = intval($_GET['amount']);
+
+            if(isset($_GET['original_amount'])) {
+                $this->applyDiscount($cart, $amount, intval($_GET['original_amount']));
+            }
+
             // TODO: check if already approved
             $this->module->validateOrder(
-                $cart->id, 2, $total, $this->module->displayName, null, $extra_vars,
+                $cart->id, 2, $amount/100, $this->module->displayName, null, $extra_vars,
                 (int)$currencyId, false, $customer->secure_key
             );
+
             \Tools::redirect(
                 $this->context->link->getPageLink(
                     'order-confirmation', $this->ssl, null,
@@ -113,8 +124,43 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
                 )
             );
         }
+    }
 
+    private function applyDiscount($cart, $amount, $original_amount) {
 
+        $inspect = [
+            'card' => $cart,
+            'check_digest' => $checkdigest,
+            'digest' => $digest,
+            'same_digest' => $checkdigest == $digest,
+            'full_url' => $full_url,
+            'url' => $url,
+            'port' => $_SERVER['SERVER_PORT'],
+            'server_name' => $_SERVER['SERVER_NAME'],
+            'request_uri' => $_SERVER['REQUEST_URI'],
+            'calculated_url' => $calculated_url,
+            'self' => $_SERVER['PHP_SELF'],
+            'url_parsed' => $url_parsed
+        ];
+        
+        $cart_rule = new CartRule();
+        $language_ids = LanguageCore::getIDs(false);
+ 
+        foreach ($language_ids as $language_id) {
+          $cart_rule->name[$language_id] = $this->trans('Unicredit Akcija');
+          $cart_rule->description = $this->trans('Unicredit akcija - popust 15%');
+        }
+
+        $now = time();
+        $cart_rule->date_from = date('Y-m-d H:i:s', $now);
+        $cart_rule->date_to = date('Y-m-d H:i:s', strtotime('+10 minute'));
+        $cart_rule->highlight = false;
+        $cart_rule->partial_use = false;
+        $cart_rule->active = true;
+        $cart_rule->id_customer = $cart->id_customer;
+        $cart_rule->reduction_amount = ($original_amount - $amount)/100;
+        $cart_rule->add();
+        $cart->addCartRule($cart_rule->id);
     }
 
     private function resolveProtocol()
