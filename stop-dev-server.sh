@@ -4,3 +4,6 @@
 docker stop some-mysql
 # launch prestashop container
 docker stop some-prestashop
+
+docker rm some-mysql
+docker rm some-prestashop

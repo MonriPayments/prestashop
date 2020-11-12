@@ -2,7 +2,6 @@
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -106,11 +105,129 @@ class Monri extends PaymentModule
             return;
         }
 
-        $payment_options = [
-            $this->getExternalPaymentOption($params),
+        return [
+//            $this->getExternalPaymentOption($params),
+            $this->getEmbeddedPaymentOption($params)
         ];
+    }
 
-        return $payment_options;
+    private function createPayment($data, $key, $authenticity_token, $base_url)
+    {
+        $body_as_string = json_encode($data); // use php's standard library equivalent if Json::encode is not available in your code
+        $ch = curl_init($base_url . '/v2/payment/new');
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body_as_string);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+
+        $timestamp = time();
+        $digest = hash('sha512', $key . $timestamp . $authenticity_token . $body_as_string);
+        $authorization = "WP3-v2 $authenticity_token $timestamp $digest";
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($body_as_string),
+                'Authorization: ' . $authorization
+            )
+        );
+
+        $result = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            curl_close($ch);
+            return ['client_secret' => null, 'status' => 'declined', 'error' => curl_error($ch)];
+        } else {
+            curl_close($ch);
+            return ['status' => 'approved', 'client_secret' => json_decode($result, true)['client_secret']];
+        }
+    }
+
+    public function getEmbeddedPaymentOption($params)
+    {
+        try {
+
+            $customer = $this->context->customer;
+            $cart = $this->context->cart;
+            $mode = Configuration::get(MonriConstants::KEY_MODE);
+            $base_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+            $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+            $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+
+            $address = new Address($cart->id_address_delivery);
+
+            $address_delivery = new Address($cart->id_address_delivery);
+            $address_delivery_country = new Country($address_delivery->id_country);
+            $iso_code = $address_delivery_country->iso_code;
+
+            $currency = new Currency($cart->id_currency);
+            $amount = ((int)((double)$cart->getOrderTotal() * 100));
+            $order_number = $cart->id . "_" . time();
+
+            $data = [
+                'amount' => $amount, //minor units = 1EUR
+                // unique order identifier
+                'order_number' => $order_number,
+                'currency' => $currency->iso_code,
+                'transaction_type' => 'purchase',
+                'order_info' => "Order {$cart->id}",
+                'scenario' => 'charge',
+                'ch_full_name' => "{$customer->firstname} {$customer->lastname}",
+                'ch_address' => $address->address1,
+                'ch_city' => $address->city,
+                'ch_zip' => $address->postcode,
+                'ch_country' => $iso_code,
+                'ch_phone' => $address->phone,
+                'ch_email' => $customer->email
+            ];
+            $paymentResponse = $this->createPayment($data, $merchant_key, $authenticity_token, $base_url);
+
+            if ($paymentResponse['client_secret'] != null) {
+                $embeddedOption = new PaymentOption();
+
+                $embeddedOption
+                    ->setCallToActionText($this->l('Monri - Plaćanje karticom'))
+//                    ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
+                    ->setForm($this->generateWorkingForm([
+                        'client_secret' => $paymentResponse['client_secret'],
+                        'base_url' => $base_url,
+                        'authenticity_token' => $authenticity_token
+                    ]));
+
+                return $embeddedOption;
+            } else {
+                var_dump('Error response ' + json_encode($paymentResponse));
+                die();
+                return null;
+            }
+        } catch (Exception $exception) {
+            var_dump('Error ' . $exception);
+            die();
+            return null;
+        }
+    }
+
+    protected function generateWorkingForm($params)
+    {
+        $months = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $months[] = sprintf("%02d", $i);
+        }
+
+        $years = [];
+        for ($i = 0; $i <= 10; $i++) {
+            $years[] = date('Y', strtotime('+'.$i.' years'));
+        }
+
+        $this->context->smarty->assign([
+//            'action' => $this->context->link->getModuleLink($this->name, 'validation', array(), true),
+            'client_secret' => $params['client_secret'],
+            'base_url' => $params['base_url'],
+            'authenticity_token' => $params['authenticity_token'],
+        ]);
+
+        return $this->context->smarty->fetch('module:monri/views/templates/front/payment_form.tpl');
     }
 
     /**
@@ -332,7 +449,6 @@ class Monri extends PaymentModule
             'value' => 'monri',
         ];
 
-//        Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
             ->setAction($form_url)
             ->setInputs($new_inputs);

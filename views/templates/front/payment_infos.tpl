@@ -24,5 +24,5 @@
 *}
 
 <section>
-  <p>{l s='Add some details about the payment option' mod='mypaymentmodule'}</p>
+  <p>{l s='Plaćanje karticom' mod='mypaymentmodule'}</p>
 </section>

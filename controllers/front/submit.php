@@ -80,9 +80,6 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             ];
         }
 
-//        echo '<pre>' . var_export($inputs, true) . '</pre>';
-//        die();
-
         $inputs['amount'] = [
             'name' => 'amount',
             'type' => 'hidden',
