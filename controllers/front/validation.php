@@ -35,10 +35,9 @@ class MonriValidationModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         $cart = $this->context->cart;
-        echo '<pre>' . var_export($this->context, true) . '</pre>';
-        die();
         if ($cart->id_customer == 0 || $cart->id_address_delivery == 0 || $cart->id_address_invoice == 0 || !$this->module->active) {
             Tools::redirect('index.php?controller=order&step=1');
+            return;
         }
 
         // Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
@@ -57,6 +56,14 @@ class MonriValidationModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign([
             'params' => $_REQUEST,
         ]);
+
+        if(!isset($_POST['trx_result'])) {
+            $this->context->smarty->assign([
+                'message' => 'Plaćanje neuspješno',
+            ]);
+            Tools::redirect('index.php?controller=order&step=3');
+            return;
+        }
 
         //$this->setTemplate('payment_return.tpl');
         $this->setTemplate('module:monri/views/templates/front/payment_return.tpl');

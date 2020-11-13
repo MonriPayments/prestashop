@@ -23,7 +23,8 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<form action="{$action}" id="payment-form">
+<form action="{$action}" id="payment-form" class="monri-payment-form-{$client_secret}"
+      method="POST">
 
     <div style="display: block; min-height: 154px;height: 154px" id="card-element-{$client_secret}">
         <!-- A Monri Component will be inserted here. -->
@@ -34,27 +35,17 @@
 
 <script src="{$base_url}/dist/components.js"></script>
 {literal}
+
 <script>
     {/literal}
     (function () {
         var authenticityToken = '{$authenticity_token}';
         var clientSecret = '{$client_secret}';
         {literal}
-        var monri = Monri(authenticityToken);
-        var components = monri.components({"clientSecret": clientSecret});
-        // Create an instance of the card Component.
-        var card = components.create('card');
-        card.mount('card-element-' + clientSecret);
-        var transactionParams = {}
-
-        var buttons = document.querySelectorAll("#payment-confirmation .btn.btn-primary");
-
-        buttons[0].on('click', function (e) {
-            e.preventDefault();
-            monri.confirmPayment(card, transactionParams).then(function (result) {
-                alert(result.status)
-            })
-        })
+        window.MonriConfig = {
+            authenticityToken: authenticityToken,
+            clientSecret: clientSecret
+        }
     })()
 </script>
 {/literal}

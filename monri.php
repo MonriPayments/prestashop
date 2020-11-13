@@ -82,7 +82,8 @@ class Monri extends PaymentModule
 
         return parent::install()
             && $this->registerHook('paymentOptions')
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentReturn')
+            && $this->registerHook('actionFrontControllerSetMedia');
     }
 
     /**
@@ -163,7 +164,7 @@ class Monri extends PaymentModule
 
             $currency = new Currency($cart->id_currency);
             $amount = ((int)((double)$cart->getOrderTotal() * 100));
-            $order_number = $cart->id . "_" . time();
+            $order_number = $cart->id;
 
             $data = [
                 'amount' => $amount, //minor units = 1EUR
@@ -185,10 +186,10 @@ class Monri extends PaymentModule
 
             if ($paymentResponse['client_secret'] != null) {
                 $embeddedOption = new PaymentOption();
-
+                $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
                 $embeddedOption
                     ->setCallToActionText($this->l('Monri - Plaćanje karticom'))
-//                    ->setAdditionalInformation($this->context->smarty->fetch('module:monri/views/templates/front/payment_infos.tpl'))
+                    ->setAction($form_url)
                     ->setForm($this->generateWorkingForm([
                         'client_secret' => $paymentResponse['client_secret'],
                         'base_url' => $base_url,
@@ -208,20 +209,39 @@ class Monri extends PaymentModule
         }
     }
 
+    public function hookActionFrontControllerSetMedia($params)
+    {
+        // List of front controllers where we set the assets
+        $frontControllers = array('order', 'order-confirmation', 'order-opc');
+        $controller = $this->context->controller;
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $base_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+
+        if (in_array($controller->php_self, $frontControllers)) {
+
+            $controller->registerJavascript(
+                'monri-components',
+                $base_url . "/dist/components.js",
+                [
+                    'priority' => 200,
+                ]
+            );
+
+            $controller->registerJavascript(
+                'monri-confirm-order',
+                'modules/monri/views/js/order.js',
+                [
+                    'priority' => 200,
+                ]
+            );
+        }
+    }
+
     protected function generateWorkingForm($params)
     {
-        $months = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $months[] = sprintf("%02d", $i);
-        }
-
-        $years = [];
-        for ($i = 0; $i <= 10; $i++) {
-            $years[] = date('Y', strtotime('+'.$i.' years'));
-        }
 
         $this->context->smarty->assign([
-//            'action' => $this->context->link->getModuleLink($this->name, 'validation', array(), true),
+            'action' => $this->context->link->getModuleLink($this->name, 'validation', array(), true),
             'client_secret' => $params['client_secret'],
             'base_url' => $params['base_url'],
             'authenticity_token' => $params['authenticity_token'],
@@ -663,6 +683,7 @@ class Monri extends PaymentModule
      */
     private function removeConfigurationsFromDatabase()
     {
+        return true;
         $names = [
             MonriConstants::KEY_MODE,
             MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
