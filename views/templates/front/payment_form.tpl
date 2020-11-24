@@ -23,14 +23,18 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<form action="{$action}" id="payment-form" class="monri-payment-form-{$client_secret}"
+<form action="index.php?fc=module&module=monri&controller=check" id="payment-form" class="monri-payment-form-{$client_secret}"
       method="POST">
+
+        <input type="text" hidden name="monri-order-number">
+        <input type="text" hidden name="monri-amount">
 
     <div style="display: block; min-height: 154px;height: 154px" id="card-element-{$client_secret}">
         <!-- A Monri Component will be inserted here. -->
     </div>
     <!-- Used to display Component errors. -->
     <div id="card-errors" role="alert"></div>
+    <div id="card-discount" role=""></div>
 </form>
 
 <script src="{$base_url}/dist/components.js"></script>
@@ -44,7 +48,9 @@
         {literal}
         window.MonriConfig = {
             authenticityToken: authenticityToken,
-            clientSecret: clientSecret
+            clientSecret: clientSecret,
+            calculatePriceEndpoint: 'index.php?fc=module&module=monri&controller=price&id_lang=1',
+            checkOrderEndpoint: 'index.php?fc=module&module=monri&controller=check&id_lang=1'
         }
     })()
 </script>

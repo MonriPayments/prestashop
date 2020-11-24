@@ -1,10 +1,10 @@
 <?php
 
-use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
+use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
+include_once 'classes/MonriPaymentFee.php';
 
 class MonriConstants
 {
@@ -21,6 +21,7 @@ class MonriConstants
 
 class Monri extends PaymentModule
 {
+    const INSTALL_SQL_FILE = 'install.sql';
     protected $_html = '';
     protected $_postErrors = array();
 
@@ -74,16 +75,37 @@ class Monri extends PaymentModule
 
     public function install()
     {
-
         if (!$this->isPrestaShopSupportedVersion()) {
             $this->_errors[] = $this->l('Sorry, this module is not compatible with your version.');
             return false;
         }
 
         return parent::install()
+            && $this->installDb()
             && $this->registerHook('paymentOptions')
             && $this->registerHook('paymentReturn')
             && $this->registerHook('actionFrontControllerSetMedia');
+    }
+
+    private function installDb() {
+        if (!file_exists(dirname(__FILE__).'/'.self::INSTALL_SQL_FILE)) {
+            return (false);
+        } elseif (!$sql = Tools::file_get_contents(dirname(__FILE__).'/'.self::INSTALL_SQL_FILE)) {
+            return (false);
+        }
+
+        $sql = str_replace(array('PREFIX_', 'ENGINE_TYPE'), array(_DB_PREFIX_, _MYSQL_ENGINE_), $sql);
+        $sql = preg_split("/;\s*[\r\n]+/", $sql);
+
+        foreach ($sql as $query) {
+            if ($query) {
+                if (!Db::getInstance()->execute(trim($query))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -93,7 +115,9 @@ class Monri extends PaymentModule
      */
     public function uninstall()
     {
-        return parent::uninstall() && $this->removeConfigurationsFromDatabase();
+        return parent::uninstall()
+            && $this->removeConfigurationsFromDatabase()
+            && $this->uninstallDb();
     }
 
     public function hookPaymentOptions($params)
@@ -110,6 +134,43 @@ class Monri extends PaymentModule
 //            $this->getExternalPaymentOption($params),
             $this->getEmbeddedPaymentOption($params)
         ];
+    }
+
+    static function updatePayment($client_secret, $amount, $key, $authenticity_token, $base_url)
+    {
+        $body_as_string = json_encode(['transaction' => ['amount' => intval($amount)]]);
+        $timestamp = time();
+        $digest = hash('sha512', $key . $timestamp . $authenticity_token . $body_as_string);
+        $authorization = "WP3-v2 $authenticity_token $timestamp $digest";
+        $ch = curl_init($base_url . "/v2/payment/$client_secret/update");
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body_as_string);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($body_as_string),
+                'Authorization: ' . $authorization
+            )
+        );
+
+        $result = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            curl_close($ch);
+            return [
+                'error' => curl_error($ch),
+                'status' => 'error'
+            ];
+        } else {
+            curl_close($ch);
+            return [
+                'response' => json_decode($result, true),
+                'status' => 'approved'
+            ];
+        }
     }
 
     private function createPayment($data, $key, $authenticity_token, $base_url)
@@ -151,10 +212,9 @@ class Monri extends PaymentModule
 
             $customer = $this->context->customer;
             $cart = $this->context->cart;
-            $mode = Configuration::get(MonriConstants::KEY_MODE);
-            $base_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
-            $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
-            $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+            $base_url = Monri::baseUrl();
+            $authenticity_token = Monri::getAuthenticityToken();
+            $merchant_key = Monri::getMerchantKey();
 
             $address = new Address($cart->id_address_delivery);
 
@@ -164,7 +224,7 @@ class Monri extends PaymentModule
 
             $currency = new Currency($cart->id_currency);
             $amount = ((int)((double)$cart->getOrderTotal() * 100));
-            $order_number = $cart->id;
+            $order_number = $cart->id . "_" . time();
 
             $data = [
                 'amount' => $amount, //minor units = 1EUR
@@ -186,7 +246,7 @@ class Monri extends PaymentModule
 
             if ($paymentResponse['client_secret'] != null) {
                 $embeddedOption = new PaymentOption();
-                $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
+                $form_url = $this->context->link->getModuleLink($this->name, 'check', array(), true);
                 $embeddedOption
                     ->setCallToActionText($this->l('Monri - Plaćanje karticom'))
                     ->setAction($form_url)
@@ -239,14 +299,7 @@ class Monri extends PaymentModule
 
     protected function generateWorkingForm($params)
     {
-
-        $this->context->smarty->assign([
-            'action' => $this->context->link->getModuleLink($this->name, 'validation', array(), true),
-            'client_secret' => $params['client_secret'],
-            'base_url' => $params['base_url'],
-            'authenticity_token' => $params['authenticity_token'],
-        ]);
-
+        $this->context->smarty->assign($params);
         return $this->context->smarty->fetch('module:monri/views/templates/front/payment_form.tpl');
     }
 
@@ -697,9 +750,163 @@ class Monri extends PaymentModule
         return $db->execute('DELETE FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` IN ("' . implode('", "', $names) . '") ');
     }
 
+    public function uninstallDb()
+    {
+        return Db::getInstance()->execute(
+            'DROP TABLE IF EXISTS `'._DB_PREFIX_.'monri_paymentfee`'
+        );
+    }
+
     public static function getMerchantKey()
     {
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+    }
+
+    public static function getAuthenticityToken()
+    {
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+    }
+
+    public static function baseUrl()
+    {
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        return $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+    }
+
+    public static function baseShopUrl()
+    {
+        return Context::getContext()->shop->getBaseURL(true);
+    }
+
+    public static function getPrestashopWebServiceApiKey()
+    {
+        // TODO: add a a monri plugin
+        return 'ikaRpebIzB96FOJu944FN0H2CRafjj33';
+    }
+
+    public static function curlGetJSON($url, $headers)
+    {
+        $request = curl_init();
+        $headers[] = 'Accept: application/json';
+        $curlOptions = [
+            CURLOPT_URL => $url,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_SSL_VERIFYPEER => 1,
+            CURLOPT_SSL_VERIFYHOST => 0
+        ];
+        // Set options
+        curl_setopt_array($request, $curlOptions);
+        $apiResponse = curl_exec($request);
+        $httpCode = (int)curl_getinfo($request, CURLINFO_HTTP_CODE);
+        $curlDetails = curl_getinfo($request);
+        curl_close($request);
+        return [
+            'response' => json_decode($apiResponse, true),
+            'http_code' => $httpCode,
+            'curl_details' => $curlDetails,
+            'request_headers' => $headers,
+            'url' => $url
+        ];
+    }
+
+    public static function curlPostXml($url, $xml)
+    {
+        $request = curl_init();
+        $curlOptions = [
+            CURLOPT_URL => $url,
+            CURLOPT_HTTPHEADER => array('Content-Type: application/xml', 'Accept: application/xml'),
+            CURLOPT_POST => 1,
+            CURLOPT_POSTFIELDS => $xml,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_SSL_VERIFYPEER => 1,
+            CURLOPT_SSL_VERIFYHOST => 0
+        ];
+        // Set options
+        curl_setopt_array($request, $curlOptions);
+        $apiResponse = curl_exec($request);
+        $httpCode = (int)curl_getinfo($request, CURLINFO_HTTP_CODE);
+        $curlDetails = curl_getinfo($request);
+        curl_close($request);
+        return [
+            'response' => $apiResponse,
+            'http_code' => $httpCode,
+            'curl_details' => $curlDetails
+        ];
+    }
+
+    public static function xmlToArray($input)
+    {
+        $xml = simplexml_load_string($input);
+        $json = json_encode($xml);
+        return json_decode($json, TRUE);
+    }
+
+    public static function applyMonriDiscount() {
+
+    }
+
+    public static function addCartRule($discount_name, $context, $feeAmount) {
+        // 1. save in db
+        // 2. check if we have id cart rule
+        // 3. 
+        $objPaymentFeeVoucher = new MonriPaymentFee();
+        $isExistCartRule = $objPaymentFeeVoucher->getIdCartRuleByIdCart(
+            $context->cart->id,
+            $context->customer->id
+        );
+
+        $isExist = false;
+
+        if ($isExistCartRule) {
+            $objCartRule = new CartRule($isExistCartRule['id_cart_rule']);
+            if (Validate::isLoadedObject($objCartRule)) {
+                $objPaymentFeeVoucher = new WkPaymentFeeVoucher($isExistCartRule['id']);
+                $objCartRule->quantity_per_user = $objCartRule->quantity_per_user + 1;
+                $isExist = true;
+            }
+        } else {
+            $isExistUsedCartRule = $objPaymentFeeVoucher->getUsedVoucherByIdCustomer($this->context->customer->id);
+            if ($isExistUsedCartRule) {
+                $objCartRule = new CartRule($isExistUsedCartRule['id_cart_rule']);
+                if (Validate::isLoadedObject($objCartRule)) {
+                    $objPaymentFeeVoucher = new WkPaymentFeeVoucher($isExistUsedCartRule['id']);
+                    $objCartRule->quantity_per_user = $objCartRule->quantity_per_user + 1;
+                    $isExist = true;
+                }
+            }
+        }
+
+        if (!$isExist) {
+            $objCartRule = new CartRule();
+            $objCartRule->code = Tools::passwdGen();
+            $objCartRule->name = array();
+            $objCartRule->quantity_per_user = 1;
+            foreach (Language::getLanguages(true) as $lang) {
+                $objCartRule->name[$lang['id_lang']] = $this->module->l('Payment discount');
+            }
+        }
+
+        $objCartRule = new CartRule();
+        $objCartRule->code = Tools::passwdGen();
+        $objCartRule->name = array();
+        $objCartRule->quantity_per_user = 1;
+        foreach (Language::getLanguages(true) as $lang) {
+            $objCartRule->name[$lang['id_lang']] = $discount_name;
+        }
+        $objCartRule->id_customer = $context->customer->id;
+        $objCartRule->reduction_amount = $feeAmount;
+        $objCartRule->date_from = date('Y-m-d H:00:00');
+        $objCartRule->date_to = date('Y-m-d H:00:00', strtotime('+ 60 minute'));
+        $objCartRule->quantity = 1;
+        $objCartRule->partial_use = 0;
+        $objCartRule->reduction_tax = 1;
+        $objCartRule->reduction_currency = $context->currency->id;
+        $objCartRule->active = 1;
+        $objCartRule->save();
+        $context->cart->addCartRule($objCartRule->id);
+        return $objCartRule;
     }
 }
