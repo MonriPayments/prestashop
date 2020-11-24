@@ -3,7 +3,9 @@
 if (!defined('_PS_VERSION_')) {
     exit;
 }
+
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
+
 include_once 'classes/MonriPaymentFee.php';
 
 class MonriConstants
@@ -87,10 +89,11 @@ class Monri extends PaymentModule
             && $this->registerHook('actionFrontControllerSetMedia');
     }
 
-    private function installDb() {
-        if (!file_exists(dirname(__FILE__).'/'.self::INSTALL_SQL_FILE)) {
+    private function installDb()
+    {
+        if (!file_exists(dirname(__FILE__) . '/' . self::INSTALL_SQL_FILE)) {
             return (false);
-        } elseif (!$sql = Tools::file_get_contents(dirname(__FILE__).'/'.self::INSTALL_SQL_FILE)) {
+        } elseif (!$sql = Tools::file_get_contents(dirname(__FILE__) . '/' . self::INSTALL_SQL_FILE)) {
             return (false);
         }
 
@@ -212,6 +215,7 @@ class Monri extends PaymentModule
 
             $customer = $this->context->customer;
             $cart = $this->context->cart;
+            self::disableCartRule('ucbm_discount', $this->context);
             $base_url = Monri::baseUrl();
             $authenticity_token = Monri::getAuthenticityToken();
             $merchant_key = Monri::getMerchantKey();
@@ -240,7 +244,9 @@ class Monri extends PaymentModule
                 'ch_zip' => $address->postcode,
                 'ch_country' => $iso_code,
                 'ch_phone' => $address->phone,
-                'ch_email' => $customer->email
+                'ch_email' => $customer->email,
+                // TODO: bs
+                'language' => 'hr'
             ];
             $paymentResponse = $this->createPayment($data, $merchant_key, $authenticity_token, $base_url);
 
@@ -258,8 +264,6 @@ class Monri extends PaymentModule
 
                 return $embeddedOption;
             } else {
-                var_dump('Error response ' + json_encode($paymentResponse));
-                die();
                 return null;
             }
         } catch (Exception $exception) {
@@ -753,7 +757,7 @@ class Monri extends PaymentModule
     public function uninstallDb()
     {
         return Db::getInstance()->execute(
-            'DROP TABLE IF EXISTS `'._DB_PREFIX_.'monri_paymentfee`'
+            'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'monri_paymentfee`'
         );
     }
 
@@ -844,51 +848,45 @@ class Monri extends PaymentModule
         return json_decode($json, TRUE);
     }
 
-    public static function applyMonriDiscount() {
+    public static function applyMonriDiscount()
+    {
 
     }
 
-    public static function addCartRule($discount_name, $context, $feeAmount) {
-        // 1. save in db
-        // 2. check if we have id cart rule
-        // 3. 
-        $objPaymentFeeVoucher = new MonriPaymentFee();
-        $isExistCartRule = $objPaymentFeeVoucher->getIdCartRuleByIdCart(
+    public static function disableCartRule($cart_rule_name, $context)
+    {
+        $monriPaymentFee = new MonriPaymentFee();
+
+        $isExistCartRules = $monriPaymentFee->getIdCartRuleByIdCart(
             $context->cart->id,
-            $context->customer->id
+            $context->customer->id,
+            $cart_rule_name
         );
 
-        $isExist = false;
+        if (count($isExistCartRules) > 0) {
+            foreach ($isExistCartRules as $isExistCartRule) {
+                $objCartRule = new CartRule($isExistCartRule['id_cart_rule']);
+                $context->cart->removeCartRule($isExistCartRule['id_cart_rule']);
 
-        if ($isExistCartRule) {
-            $objCartRule = new CartRule($isExistCartRule['id_cart_rule']);
-            if (Validate::isLoadedObject($objCartRule)) {
-                $objPaymentFeeVoucher = new WkPaymentFeeVoucher($isExistCartRule['id']);
-                $objCartRule->quantity_per_user = $objCartRule->quantity_per_user + 1;
-                $isExist = true;
-            }
-        } else {
-            $isExistUsedCartRule = $objPaymentFeeVoucher->getUsedVoucherByIdCustomer($this->context->customer->id);
-            if ($isExistUsedCartRule) {
-                $objCartRule = new CartRule($isExistUsedCartRule['id_cart_rule']);
                 if (Validate::isLoadedObject($objCartRule)) {
-                    $objPaymentFeeVoucher = new WkPaymentFeeVoucher($isExistUsedCartRule['id']);
-                    $objCartRule->quantity_per_user = $objCartRule->quantity_per_user + 1;
-                    $isExist = true;
+//                    $objCartRule->active = 0;
+                    $objCartRule->delete();
                 }
             }
-        }
 
-        if (!$isExist) {
-            $objCartRule = new CartRule();
-            $objCartRule->code = Tools::passwdGen();
-            $objCartRule->name = array();
-            $objCartRule->quantity_per_user = 1;
-            foreach (Language::getLanguages(true) as $lang) {
-                $objCartRule->name[$lang['id_lang']] = $this->module->l('Payment discount');
-            }
         }
+    }
 
+    public static function addCartRule($cart_rule_name, $discount_name, $context, $feeAmount)
+    {
+        self::disableCartRule($cart_rule_name, $context);
+        // 1. check if we already created rule
+        // 2. if not create new one
+        // 1. save in db
+        // 2. check if we have id cart rule
+        // 3.
+
+        $monriPaymentFee = new MonriPaymentFee();
         $objCartRule = new CartRule();
         $objCartRule->code = Tools::passwdGen();
         $objCartRule->name = array();
@@ -907,6 +905,13 @@ class Monri extends PaymentModule
         $objCartRule->active = 1;
         $objCartRule->save();
         $context->cart->addCartRule($objCartRule->id);
+        $monriPaymentFee->id_cart_rule = $objCartRule->id;
+        $monriPaymentFee->id_customer = $context->customer->id;
+        $monriPaymentFee->id_cart = $context->cart->id;
+        $monriPaymentFee->is_used = 0;
+        $monriPaymentFee->name = $cart_rule_name;
+        $monriPaymentFee->save();
+
         return $objCartRule;
     }
 }

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_monri_paymentfee`
     `id_cart_rule` int(11)             NOT NULL,
     `id_cart`      int(11)             NOT NULL,
     `id_customer`  int(11)             NOT NULL,
+    `name`         varchar(50)         NOT NULL,
     `is_used`      tinyint(1) unsigned NOT NULL DEFAULT '0',
     `date_add`     datetime            NOT NULL,
     `date_upd`     datetime            NOT NULL,

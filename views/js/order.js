@@ -7,7 +7,9 @@ jQuery(document).ready(function () {
     var cardData = {};
     var authenticityToken = MonriConfig.authenticityToken;
     var clientSecret = MonriConfig.clientSecret;
-    var monri = Monri(authenticityToken);
+    var monri = Monri(authenticityToken, {
+        locale: 'hr'
+    });
     var components = monri.components({"clientSecret": clientSecret});
     // Create an instance of the card Component.
     var card = components.create('card');
@@ -15,6 +17,9 @@ jQuery(document).ready(function () {
 
     var $cardDiscount = $("#card-discount");
     var $fee = $("#wk-payment-fee");
+    var activeDiscount;
+
+    var cartTotalObject = $('#js-checkout-summary .cart-summary-line.cart-total span.value');
 
     card.addChangeListener('card_number', function (event) {
         cardData = event.data;
@@ -25,6 +30,7 @@ jQuery(document).ready(function () {
         // 6. show wk fee if discount is not available Y
         // 7. hide discount message if discount is not available Y
         // 8. update price somehow?
+
         if (cardData.discount) {
             $fee.hide();
             $cardDiscount.html(cardData.discount.message);
@@ -33,10 +39,12 @@ jQuery(document).ready(function () {
             $cardDiscount.html('');
             $cardDiscount.hide();
         }
-        fetchPrice(cardData, function (price) {
-            console.log("Received price", price);
+
+        activeDiscount = cardData.discount || null;
+
+        fetchPrice(cardData, function (result) {
+            cartTotalObject.html(result['amount']);
         })
-        console.log(cardData)
     });
 
     function fetchPrice(cardData, callback) {
@@ -48,6 +56,7 @@ jQuery(document).ready(function () {
             data: {
                 method: 'test',
                 ajax: true,
+                action: 'price',
                 card_data: cardData
                 // token: token
             },
@@ -76,6 +85,7 @@ jQuery(document).ready(function () {
         }
 
         fetchPrice(cardData, function (price) {
+
             console.log(price);
             // monri.confirmPayment(card, {}).then(function (result) {
             //     console.log(result);
