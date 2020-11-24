@@ -24,7 +24,7 @@ class MonriPaymentFee extends ObjectModel
         ),
     );
 
-    public function getIdCartRuleByIdCart($idCart, $idCustomer, $name)
+    public static function getIdCartRuleByIdCart($idCart, $idCustomer, $name)
     {
         return Db::getInstance()->executeS(
             'SELECT * FROM `'._DB_PREFIX_.'monri_paymentfee`

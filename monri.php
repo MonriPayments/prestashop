@@ -855,9 +855,7 @@ class Monri extends PaymentModule
 
     public static function disableCartRule($cart_rule_name, $context)
     {
-        $monriPaymentFee = new MonriPaymentFee();
-
-        $isExistCartRules = $monriPaymentFee->getIdCartRuleByIdCart(
+        $isExistCartRules = MonriPaymentFee::getIdCartRuleByIdCart(
             $context->cart->id,
             $context->customer->id,
             $cart_rule_name
@@ -867,9 +865,9 @@ class Monri extends PaymentModule
             foreach ($isExistCartRules as $isExistCartRule) {
                 $objCartRule = new CartRule($isExistCartRule['id_cart_rule']);
                 $context->cart->removeCartRule($isExistCartRule['id_cart_rule']);
+                $context->cart->save();
 
                 if (Validate::isLoadedObject($objCartRule)) {
-//                    $objCartRule->active = 0;
                     $objCartRule->delete();
                 }
             }

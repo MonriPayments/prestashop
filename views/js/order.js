@@ -21,6 +21,8 @@ jQuery(document).ready(function () {
 
     var cartTotalObject = $('#js-checkout-summary .cart-summary-line.cart-total span.value');
 
+    var memoizeBinResult = {};
+
     card.addChangeListener('card_number', function (event) {
         cardData = event.data;
         // 1. enter bin Y
@@ -57,7 +59,8 @@ jQuery(document).ready(function () {
                 method: 'test',
                 ajax: true,
                 action: 'price',
-                card_data: cardData
+                card_data: cardData,
+                client_secret: clientSecret
                 // token: token
             },
             success: function (data) {
