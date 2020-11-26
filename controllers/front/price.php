@@ -41,42 +41,44 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         parent::initContent();
     }
 
-    private function getFormattedPrice($feeAmount)
+    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.10;
+
+    private function applyVAT($amount)
     {
-        if (!$this->isTokenValid()) {
-            die('Something went wrong!');
-        }
-        $taxConfiguration = new TaxConfiguration();
-        if ($feeAmount > 0) {
-            $totalOrderAmount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes());
-            $totalCartAmount = Tools::displayPrice($totalOrderAmount - $feeAmount);
-            die(Tools::jsonEncode(array('amount' => $totalCartAmount)));
-        } else {
-            $totalOrderAmount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes());
-            die(Tools::jsonEncode(array('amount' => Tools::displayPrice($totalOrderAmount))));
-        }
+        return $amount;
+    }
+
+    private function getPriceForDiscount($product)
+    {
+        return $product['price_without_reduction'];
     }
 
     public function displayAjaxPrice()
     {
 
+        if (!isset($_POST['client_secret'])) {
+            die("Unexpected error occurred! Missing clientSecret");
+        }
+
         try {
             $cart = $this->context->cart;
+            $client_secret = $_POST['client_secret'];
+            Monri::disableCartRule('ucbm_discount', $this->context);
             $products = $cart->getProducts();
             $discounts = [];
 
             $has_monri_discount = isset($_POST['card_data']['discount']);
 
-            $monri_discount_amount = 0;
+            $monri_discount_percentage = 0;
 
             if ($has_monri_discount) {
                 $monri_discount = $_POST['card_data']['discount'];
                 $original_amount = intval($monri_discount['original_amount']);
                 $amount = intval($monri_discount['amount']);
-                $monri_discount_amount = ($original_amount - $amount) / $original_amount;
+                $monri_discount_percentage = ($original_amount - $amount) / $original_amount;
             } else {
                 // We do not have discount so we should disable rule
-                $disable_cart_rule = Monri::disableCartRule('ucbm_discount',$this->context);
+
             }
 
 
@@ -84,35 +86,28 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 2. fetch special prices
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
-
-            if ($has_monri_discount) {
-                foreach ($products as $product) {
-                    $specific_prices_discount = null;
-                    $id_specific_price = $product['specific_prices']['id_specific_price'];
-                    $specific_prices_discount = self::getSpecificPriceDetails($id_specific_price, $monri_discount_amount);
-                    if ($specific_prices_discount == null) {
-                        continue;
-                    }
-
-                    $mpc_price = $product['price_without_reduction'];
-                    $price_with_discount = null;
-
-                    $price_with_discount = $mpc_price * (1 - $specific_prices_discount['discount']);
-                    $discounts[] = [
-                        // Price without VAT
-                        'price' => $product['price'],
-                        'price_with_discount' => $price_with_discount,
-                        'discount_amount' => $mpc_price - $price_with_discount,
-                        "total_wt" => $product["total_wt"],
-                        // Price with VAT
-                        "price_wt" => $product["price_wt"],
-                        'has_discount' => $product['price_wt'] != $product['price_without_reduction'],
-                        // MPC with VAT
-                        'mpc' => $product['price_without_reduction'],
-                        'specific_prices' => $product['specific_prices'],
-                        'specific_prices_discount' => $specific_prices_discount
-                    ];
-                }
+            foreach ($products as $product) {
+                $id_specific_price = $product['specific_prices']['id_specific_price'];
+                $discount = self::getMonriDiscount($id_specific_price, $monri_discount_percentage);
+                $price_for_discount = self::getPriceForDiscount($product);
+                $price_with_discount = $price_for_discount * $discount;
+                $discounts[] = [
+                    'discount_percentage' => $discount,
+                    'price_for_discount' => self::getPriceForDiscount($product),
+                    // Price without VAT
+                    'price' => $product['price'],
+                    'price_without_reduction_without_tax' => $product['price_without_reduction_without_tax'],
+                    'discount_amount' => $price_with_discount,
+                    "total_wt" => $product["total_wt"],
+                    // Price with VAT
+                    "price_wt" => $product["price_wt"],
+                    'has_discount' => $product['total'] != $product['price_without_reduction_without_tax'],
+                    // MPC with VAT
+                    'mpc' => $product['price_without_reduction'],
+                    'specific_prices' => $product['specific_prices'],
+                    'product' => $product,
+                    'discount' => $discount
+                ];
             }
 
             $monri_discount_sum = 0;
@@ -121,25 +116,30 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                 $monri_discount_sum = $monri_discount_sum + $item['discount_amount'];
             }
 
-            $add_cart_rule = null;
+            $monri_discount_sum = $this->applyVAT($monri_discount_sum);
             if ($monri_discount_sum > 0) {
-                Monri::addCartRule('ucbm_discount','Unicredit popust', $this->context, $monri_discount_sum);
+                Monri::addCartRule('ucbm_discount', 'Unicredit popust', $this->context, $monri_discount_sum);
             } else {
-                Monri::disableCartRule('ucbm_discount',$this->context);
+                Monri::disableCartRule('ucbm_discount', $this->context);
             }
-
-            die(Tools::jsonEncode([
-                'price' => $this->getFormattedPrice($monri_discount_sum)
-            ]));
+            $taxConfiguration = new TaxConfiguration();
+            $totalOrderAmount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes());
+            // update amount
+            Monri::updatePayment($client_secret, intval(($totalOrderAmount * 100)));
+            $rv = [
+                'amount' => Tools::displayPrice($totalOrderAmount),
+                'discounts' => $discounts
+            ];
+            die(Tools::jsonEncode($rv));
         } catch (Exception $exception) {
             die(Tools::jsonEncode(['error' => $exception]));
         }
     }
 
-    static function getSpecificPriceDetails($id, $discount)
+    static function getMonriDiscount($id, $discount)
     {
         if (!$id) {
-            return null;
+            return self::CREDIT_CARD_PAYMENT_DISCOUNT;
         }
 
         $apiKey = Monri::getPrestashopWebServiceApiKey();
@@ -151,15 +151,10 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         $specific_price_rule = self::getSpecificPriceRule($id_specific_price_rule);
 
         if ($specific_price_rule == null) {
-            return null;
+            return self::CREDIT_CARD_PAYMENT_DISCOUNT;
         }
 
-        return [
-            'id' => $id,
-            'specific_price_rule' => $specific_price_rule,
-            'apply_monri_discount' => $specific_price_rule != null,
-            'discount' => $discount
-        ];
+        return $discount;
     }
 
     static function getSpecificPriceRule($id)

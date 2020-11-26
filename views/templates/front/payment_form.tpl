@@ -23,7 +23,7 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<form action="index.php?fc=module&module=monri&controller=check" id="payment-form" class="monri-payment-form-{$client_secret}"
+<form action="index.php?fc=module&module=monri&controller=check" id="payment-form" class="monri-payment-form monri-payment-form-{$client_secret}"
       method="POST">
 
         <input type="text" hidden name="monri-order-number">
@@ -50,6 +50,7 @@
             authenticityToken: authenticityToken,
             clientSecret: clientSecret,
             calculatePriceEndpoint: 'index.php?fc=module&module=monri&controller=price&id_lang=1',
+            resetPriceEndpoint: 'index.php?fc=module&module=monri&controller=resetprice&id_lang=1',
             checkOrderEndpoint: 'index.php?fc=module&module=monri&controller=check&id_lang=1'
         }
     })()

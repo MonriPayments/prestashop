@@ -6,20 +6,10 @@ if (!defined('_PS_VERSION_')) {
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
+include_once 'classes/MonriConstants.php';
+include_once 'classes/MonriUtils.php';
 include_once 'classes/MonriPaymentFee.php';
 
-class MonriConstants
-{
-    const MODE_PROD = 'prod';
-    const MODE_TEST = 'test';
-    const KEY_MODE = 'MONRI_MODE';
-    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
-    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
-    const KEY_MIN_INSTALLMENTS = 'KEY_MIN_INSTALLMENTS';
-    const KEY_MAX_INSTALLMENTS = 'KEY_MAX_INSTALLMENTS';
-}
 
 class Monri extends PaymentModule
 {
@@ -31,14 +21,6 @@ class Monri extends PaymentModule
     public $owner;
     public $address;
     public $extra_mail_vars;
-
-    const MODE_PROD = 'prod';
-    const MODE_TEST = 'test';
-    const KEY_MODE = 'MONRI_MODE';
-    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
-    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
 
     public function __construct()
     {
@@ -86,6 +68,7 @@ class Monri extends PaymentModule
             && $this->installDb()
             && $this->registerHook('paymentOptions')
             && $this->registerHook('paymentReturn')
+            && $this->registerHook('actionValidateOrder')
             && $this->registerHook('actionFrontControllerSetMedia');
     }
 
@@ -139,9 +122,12 @@ class Monri extends PaymentModule
         ];
     }
 
-    static function updatePayment($client_secret, $amount, $key, $authenticity_token, $base_url)
+    static function updatePayment($client_secret, $amount)
     {
-        $body_as_string = json_encode(['transaction' => ['amount' => intval($amount)]]);
+        $authenticity_token = Monri::getAuthenticityToken();
+        $key = Monri::getMerchantKey();
+        $base_url = Monri::baseUrl();
+        $body_as_string = json_encode(['amount' => intval($amount)]);
         $timestamp = time();
         $digest = hash('sha512', $key . $timestamp . $authenticity_token . $body_as_string);
         $authorization = "WP3-v2 $authenticity_token $timestamp $digest";
@@ -239,14 +225,19 @@ class Monri extends PaymentModule
                 'order_info' => "Order {$cart->id}",
                 'scenario' => 'charge',
                 'ch_full_name' => "{$customer->firstname} {$customer->lastname}",
-                'ch_address' => $address->address1,
-                'ch_city' => $address->city,
-                'ch_zip' => $address->postcode,
+                'ch_address' => MonriUtils::valueOrDefault($address->address1, "N/A"),
+                'ch_city' => MonriUtils::valueOrDefault($address->city, "N/A"),
+                'ch_zip' => MonriUtils::valueOrDefault($address->postcode, "N/A"),
                 'ch_country' => $iso_code,
-                'ch_phone' => $address->phone,
+                'ch_phone' => MonriUtils::valueOrDefault($address->phone, "N/A"),
                 'ch_email' => $customer->email,
                 // TODO: bs
-                'language' => 'hr'
+                'language' => 'hr',
+                'custom_attributes' => [
+                    'discounts' => [
+                        'client_manages_discounts' => true
+                    ]
+                ]
             ];
             $paymentResponse = $this->createPayment($data, $merchant_key, $authenticity_token, $base_url);
 
@@ -273,6 +264,21 @@ class Monri extends PaymentModule
         }
     }
 
+    public function hookActionValidateOrder($params)
+    {
+        if (!$this->active) {
+            return false;
+        }
+
+        $order = $params['order'];
+        if($order->payment != "Monri") {
+            Monri::disableCartRule('ucbm_discount', $this->context);
+            return false;
+        }
+
+        return true;
+    }
+
     public function hookActionFrontControllerSetMedia($params)
     {
         // List of front controllers where we set the assets
@@ -282,6 +288,10 @@ class Monri extends PaymentModule
         $base_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
 
         if (in_array($controller->php_self, $frontControllers)) {
+
+            Media::addJsDef(array(
+                'static_token' => Tools::getToken(false),
+            ));
 
             $controller->registerJavascript(
                 'monri-components',
@@ -341,8 +351,6 @@ class Monri extends PaymentModule
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
-        $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
-        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
         $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
 
         $address = new Address($cart->id_address_delivery);

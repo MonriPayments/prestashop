@@ -16,12 +16,12 @@ jQuery(document).ready(function () {
     card.mount('card-element-' + clientSecret);
 
     var $cardDiscount = $("#card-discount");
-    var $fee = $("#wk-payment-fee");
     var activeDiscount;
 
     var cartTotalObject = $('#js-checkout-summary .cart-summary-line.cart-total span.value');
 
     var memoizeBinResult = {};
+    var lastAmount = '';
 
     card.addChangeListener('card_number', function (event) {
         cardData = event.data;
@@ -34,10 +34,9 @@ jQuery(document).ready(function () {
         // 8. update price somehow?
 
         if (cardData.discount) {
-            $fee.hide();
             $cardDiscount.html(cardData.discount.message);
+            $cardDiscount.show();
         } else {
-            $fee.show();
             $cardDiscount.html('');
             $cardDiscount.hide();
         }
@@ -45,9 +44,25 @@ jQuery(document).ready(function () {
         activeDiscount = cardData.discount || null;
 
         fetchPrice(cardData, function (result) {
-            cartTotalObject.html(result['amount']);
+            if (payUsingMonriActive) {
+                lastAmount = result['amount'];
+                cartTotalObject.html(lastAmount);
+            }
         })
     });
+
+    function resetPrice(cardData, callback) {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            dataType: 'json',
+            url: MonriConfig.resetPriceEndpoint,
+            data: {},
+            success: function (data) {
+                callback(data)
+            }
+        });
+    }
 
     function fetchPrice(cardData, callback) {
         $.ajax({
@@ -69,8 +84,29 @@ jQuery(document).ready(function () {
         });
     }
 
+    function isMonriModuleSelected() {
+        var moduleId = $('.payment-option input[name="payment-option"]:checked').attr('id');
+        var monriOrderNumber = $('#' + "pay-with-" + moduleId + "-form").find('input[name=monri-order-number]');
+        return monriOrderNumber.length > 0
+    }
+
     var form = $(".monri-payment-form-" + clientSecret);
     var preventDefault = true;
+    var payUsingMonriActive = isMonriModuleSelected();
+
+    $('.payment-option').on('click', function () {
+        payUsingMonriActive = isMonriModuleSelected();
+        if (payUsingMonriActive && lastAmount !== '') {
+            cartTotalObject.html(lastAmount);
+        }
+
+        if (!payUsingMonriActive) {
+            resetPrice(function (data) {
+
+            });
+        }
+    });
+
     form.on('submit', function (e) {
         if (!preventDefault) {
             return;
@@ -89,23 +125,21 @@ jQuery(document).ready(function () {
 
         fetchPrice(cardData, function (price) {
 
-            console.log(price);
-            // monri.confirmPayment(card, {}).then(function (result) {
-            //     console.log(result);
-            //     if (result.error) {
-            //         alert("Transakcija odbijena, probajte ponovo")
-            //     } else {
-            //         var paymentResult = result.result;
-            //         if (paymentResult.status != "approved") {
-            //             alert("Transakcija odbijena, probajte ponovo")
-            //         } else {
-            //             preventDefault = false;
-            //             $("input[name=monri-order-number]").val(paymentResult.order_number)
-            //             $("input[name=monri-amount]").val(paymentResult.amount)
-            //             form.submit();
-            //         }
-            //     }
-            // })
+            monri.confirmPayment(card, {}).then(function (result) {
+                if (result.error) {
+                    alert("Transakcija odbijena, pokušajte ponovo")
+                } else {
+                    var paymentResult = result.result;
+                    if (paymentResult.status !== "approved") {
+                        alert("Transakcija odbijena, pokušajte ponovo")
+                    } else {
+                        preventDefault = false;
+                        $("input[name=monri-order-number]").val(paymentResult.order_number)
+                        $("input[name=monri-amount]").val(paymentResult.amount)
+                        form.submit();
+                    }
+                }
+            })
         })
 
     })
