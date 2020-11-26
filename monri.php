@@ -9,6 +9,7 @@ use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 include_once 'classes/MonriConstants.php';
 include_once 'classes/MonriUtils.php';
 include_once 'classes/MonriPaymentFee.php';
+include_once 'classes/MonriWebServiceHelper.php';
 
 
 class Monri extends PaymentModule
@@ -271,7 +272,7 @@ class Monri extends PaymentModule
         }
 
         $order = $params['order'];
-        if($order->payment != "Monri") {
+        if ($order->payment != "Monri") {
             Monri::disableCartRule('ucbm_discount', $this->context);
             return false;
         }
@@ -796,6 +797,23 @@ class Monri extends PaymentModule
     {
         // TODO: add a a monri plugin
         return 'ikaRpebIzB96FOJu944FN0H2CRafjj33';
+    }
+
+    public static function getPrestashopAuthenticationHeader()
+    {
+        return base64_encode(Monri::getPrestashopWebServiceApiKey() . ':');
+    }
+
+    public static function webServiceGetJson($path)
+    {
+        $authorizationKey = Monri::getPrestashopAuthenticationHeader();
+        $url = Monri::webServiceUrl($path);
+        return Monri::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
+    }
+
+    public static function webServiceUrl($path)
+    {
+        return Monri::baseShopUrl() . $path;
     }
 
     public static function curlGetJSON($url, $headers)

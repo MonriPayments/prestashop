@@ -64,6 +64,25 @@ jQuery(document).ready(function () {
         });
     }
 
+    function updatePrice(cardData, callback) {
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            dataType: 'json',
+            url: MonriConfig.calculatePriceEndpoint,
+            data: {
+                ajax: true,
+                action: 'update',
+                card_data: cardData,
+                client_secret: clientSecret
+                // token: token
+            },
+            success: function (data) {
+                callback(data)
+            }
+        });
+    }
+
     function fetchPrice(cardData, callback) {
         $.ajax({
             type: 'POST',
@@ -123,9 +142,10 @@ jQuery(document).ready(function () {
             delete priceCardData.discount;
         }
 
-        fetchPrice(cardData, function (price) {
-
-            monri.confirmPayment(card, {}).then(function (result) {
+        updatePrice(cardData, function (price) {
+            monri.confirmPayment(card, {
+                custom_params: price.custom_params_products
+            }).then(function (result) {
                 if (result.error) {
                     alert("Transakcija odbijena, pokušajte ponovo")
                 } else {

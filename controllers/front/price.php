@@ -34,6 +34,7 @@ function mapProductSpecificPrice($m)
  */
 class MonriPriceModuleFrontController extends ModuleFrontController
 {
+    /** @noinspection PhpUnused */
     public function initContent()
     {
         $this->ajax = true;
@@ -43,19 +44,19 @@ class MonriPriceModuleFrontController extends ModuleFrontController
 
     const CREDIT_CARD_PAYMENT_DISCOUNT = 0.10;
 
-    private function applyVAT($amount)
-    {
-        return $amount;
-    }
-
     private function getPriceForDiscount($product)
     {
         return $product['price_without_reduction'];
     }
 
-    public function displayAjaxPrice()
+    /** @noinspection PhpUnused */
+    public function displayAjaxUpdate()
     {
+        $this->calculatePrice(true);
+    }
 
+    private function calculatePrice($updatePrice)
+    {
         if (!isset($_POST['client_secret'])) {
             die("Unexpected error occurred! Missing clientSecret");
         }
@@ -76,59 +77,63 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                 $original_amount = intval($monri_discount['original_amount']);
                 $amount = intval($monri_discount['amount']);
                 $monri_discount_percentage = ($original_amount - $amount) / $original_amount;
-            } else {
-                // We do not have discount so we should disable rule
-
             }
 
+            $custom_params_products = [];
+            $total_price_with_discounts = 0;
 
             // 1. fetch products
             // 2. fetch special prices
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
             foreach ($products as $product) {
-                $id_specific_price = $product['specific_prices']['id_specific_price'];
-                $discount = self::getMonriDiscount($id_specific_price, $monri_discount_percentage);
-                $price_for_discount = self::getPriceForDiscount($product);
-                $price_with_discount = $price_for_discount * $discount;
+                $discount = self::getMonriDiscount($product['id_product'], $monri_discount_percentage);
+                $mpc = self::getPriceForDiscount($product);
+                $mpc_with_discount = $mpc * (1 - $discount);
+                $custom_params_products[] = [
+                    'mpc' => $mpc,
+                    'mpc_with_discount' => $mpc_with_discount,
+                    'discount_percentage' => $discount,
+                    'discount_amount' => $mpc - $mpc_with_discount,
+                    'product_id' => $product['id_product']
+                ];
+
+                $total_price_with_discounts = $total_price_with_discounts + $mpc_with_discount;
+
                 $discounts[] = [
                     'discount_percentage' => $discount,
-                    'price_for_discount' => self::getPriceForDiscount($product),
+                    'mpc' => $mpc,
                     // Price without VAT
                     'price' => $product['price'],
                     'price_without_reduction_without_tax' => $product['price_without_reduction_without_tax'],
-                    'discount_amount' => $price_with_discount,
+                    'discount_amount' => $mpc_with_discount,
                     "total_wt" => $product["total_wt"],
                     // Price with VAT
                     "price_wt" => $product["price_wt"],
                     'has_discount' => $product['total'] != $product['price_without_reduction_without_tax'],
-                    // MPC with VAT
-                    'mpc' => $product['price_without_reduction'],
                     'specific_prices' => $product['specific_prices'],
                     'product' => $product,
-                    'discount' => $discount
+                    'discount' => $discount,
                 ];
             }
 
-            $monri_discount_sum = 0;
-
-            foreach ($discounts as $item) {
-                $monri_discount_sum = $monri_discount_sum + $item['discount_amount'];
-            }
-
-            $monri_discount_sum = $this->applyVAT($monri_discount_sum);
-            if ($monri_discount_sum > 0) {
-                Monri::addCartRule('ucbm_discount', 'Unicredit popust', $this->context, $monri_discount_sum);
-            } else {
-                Monri::disableCartRule('ucbm_discount', $this->context);
-            }
             $taxConfiguration = new TaxConfiguration();
-            $totalOrderAmount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes());
-            // update amount
-            Monri::updatePayment($client_secret, intval(($totalOrderAmount * 100)));
+            $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
+
+            if ($updatePrice) {
+                if ($discount_amount > 0) {
+                    Monri::addCartRule('ucbm_discount', 'Unicredit popust', $this->context, $discount_amount);
+                } else {
+                    Monri::disableCartRule('ucbm_discount', $this->context);
+                }
+                // update amount
+                Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
+            }
+
             $rv = [
-                'amount' => Tools::displayPrice($totalOrderAmount),
-                'discounts' => $discounts
+                'amount' => Tools::displayPrice($total_price_with_discounts),
+                'discount_amount' => $discount_amount,
+                'custom_params_products' => $custom_params_products
             ];
             die(Tools::jsonEncode($rv));
         } catch (Exception $exception) {
@@ -136,46 +141,34 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         }
     }
 
-    static function getMonriDiscount($id, $discount)
+    /** @noinspection PhpUnused */
+    public function displayAjaxPrice()
     {
-        if (!$id) {
-            return self::CREDIT_CARD_PAYMENT_DISCOUNT;
+        $this->calculatePrice(false);
+    }
+
+    static function getMonriDiscount($product_id, $discount)
+    {
+        // get all special prices
+        $specific_prices = MonriWebServiceHelper::getSpecialPricesForProduct($product_id);
+
+        $monri_specific_price = null;
+
+        foreach ($specific_prices as $specific_price) {
+            $specific_price_rule = MonriWebServiceHelper::getSpecificPriceRule($specific_price['id_specific_price_rule']);
+            if ($specific_price_rule == null) {
+                continue;
+            } else {
+                $monri_specific_price = $specific_price_rule;
+                break;
+            }
         }
 
-        $apiKey = Monri::getPrestashopWebServiceApiKey();
-        $authorizationKey = base64_encode($apiKey . ':');
-        $url = Monri::baseShopUrl() . "/api/specific_prices/$id?output_format=JSON";
-        $specific_prices_api_response = Monri::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
-        $specific_prices_response = $specific_prices_api_response['response']['specific_price'];
-        $id_specific_price_rule = $specific_prices_response['id_specific_price_rule'];
-        $specific_price_rule = self::getSpecificPriceRule($id_specific_price_rule);
-
-        if ($specific_price_rule == null) {
+        if ($monri_specific_price == null) {
             return self::CREDIT_CARD_PAYMENT_DISCOUNT;
         }
 
         return $discount;
     }
 
-    static function getSpecificPriceRule($id)
-    {
-        if (!$id) {
-            return null;
-        }
-
-        $apiKey = Monri::getPrestashopWebServiceApiKey();
-        $authorizationKey = base64_encode($apiKey . ':');
-        $url = Monri::baseShopUrl() . "/api/specific_price_rules/$id?output_format=JSON";
-        $rv = Monri::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
-        if (isset($rv['response']['specific_price_rule'])) {
-            $specific_price_rule = $rv['response']['specific_price_rule'];
-            if (strpos($specific_price_rule['name'], 'UCB') === 0) {
-                return $specific_price_rule;
-            } else {
-                return null;
-            }
-        } else {
-            return null;
-        }
-    }
 }
