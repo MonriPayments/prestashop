@@ -210,9 +210,8 @@ jQuery(document).ready(function () {
                 } else {
                     var paymentResult = result.result;
                     if (paymentResult.status !== "approved") {
-                        resetPrice(cardData, function () {
-                            alert(paymentResult.message)
-                        })
+                        resetPrice(cardData, function () {})
+                        alert(paymentResult.message)
                     } else {
                         preventDefault = false;
                         $("input[name=monri-order-number]").val(paymentResult.order_number)
