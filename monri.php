@@ -117,10 +117,17 @@ class Monri extends PaymentModule
             return;
         }
 
-        return [
-//            $this->getExternalPaymentOption($params),
-            $this->getEmbeddedPaymentOption($params)
-        ];
+        $rv = [];
+
+        if (self::getIntegrationMode() == null ||  self::getIntegrationMode() == MonriConstants::INTEGRATION_MODE_REDIRECT) {
+            $rv[] = $this->getExternalPaymentOption($params);
+        }
+
+        if (self::getIntegrationMode() == MonriConstants::INTEGRATION_MODE_EMBEDDED) {
+            $rv[] = $this->getEmbeddedPaymentOption($params);
+        }
+
+        return $rv;
     }
 
     static function updatePayment($client_secret, $amount)
@@ -285,13 +292,13 @@ class Monri extends PaymentModule
         // List of front controllers where we set the assets
         $frontControllers = array('order', 'order-confirmation', 'order-opc');
         $controller = $this->context->controller;
-        $mode = Configuration::get(MonriConstants::KEY_MODE);
-        $base_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+
+        $base_url = self::isModuleModeProd() ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
 
         if (in_array($controller->php_self, $frontControllers)) {
 
             Media::addJsDef(array(
-                'static_token' => Tools::getToken(false),
+                'staticToken' => Tools::getToken(false),
             ));
 
             $controller->registerJavascript(
@@ -350,8 +357,8 @@ class Monri extends PaymentModule
         $externalOption = new PaymentOption();
         $customer = $this->context->customer;
         $cart = $this->context->cart;
-        $mode = Configuration::get(MonriConstants::KEY_MODE);
-        $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+
+        $authenticity_token = Configuration::get(self::isModuleModeProd() ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
 
         $address = new Address($cart->id_address_delivery);
@@ -545,8 +552,8 @@ class Monri extends PaymentModule
     private function updateConfiguration($mode)
     {
         $update_keys = [
-            $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST,
-            $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+            self::isModuleModeProd() ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST,
+            self::isModuleModeProd() ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
         ];
 
         foreach ($update_keys as $key) {
@@ -588,17 +595,23 @@ class Monri extends PaymentModule
         } else {
             // get post values
             $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
+            $integration_mode = (string)Tools::getValue(MonriConstants::KEY_INTEGRATION_MODE);
+            $web_service_key = (string)Tools::getValue(MonriConstants::KEY_WEB_SERVICE_KEY);
+            $keep_config_on_reset = (string)Tools::getValue(MonriConstants::KEY_KEEP_CONFIG_ON_RESET);
 
             if ($mode != MonriConstants::MODE_PROD && $mode != MonriConstants::MODE_TEST) {
                 $output .= $this->displayError($this->l("Invalid Mode, expected: live or test got '$mode'"));
                 return $output . $this->displayForm();
             } else {
                 $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST);
-                $live_validate = $mode == MonriConstants::MODE_PROD ? $this->validateConfiguration(MonriConstants::MODE_PROD) : null;
+                $live_validate = self::isModuleModeProd() ? $this->validateConfiguration(MonriConstants::MODE_PROD) : null;
                 if ($test_validate == null && $live_validate == null) {
                     $this->updateConfiguration(MonriConstants::MODE_PROD);
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
                     Configuration::updateValue(MonriConstants::KEY_MODE, $mode);
+                    Configuration::updateValue(MonriConstants::KEY_INTEGRATION_MODE, $integration_mode);
+                    Configuration::updateValue(MonriConstants::KEY_WEB_SERVICE_KEY, $web_service_key);
+                    Configuration::updateValue(MonriConstants::KEY_KEEP_CONFIG_ON_RESET, $keep_config_on_reset);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
                     $output .= $test_validate . $live_validate;
@@ -676,7 +689,53 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
-                ]
+                ],
+                [
+                    'type' => 'radio',
+                    'label' => $this->l('Redirect/Embedded mod plaćanja'),
+                    'name' => MonriConstants::KEY_INTEGRATION_MODE,
+                    'class' => 't',
+                    'values' => [
+                        [
+                            'id' => MonriConstants::INTEGRATION_MODE_REDIRECT,
+                            'value' => MonriConstants::INTEGRATION_MODE_REDIRECT,
+                            'label' => $this->l('Redirect Form')
+                        ],
+                        [
+                            'id' => MonriConstants::INTEGRATION_MODE_EMBEDDED,
+                            'value' => MonriConstants::INTEGRATION_MODE_EMBEDDED,
+                            'label' => $this->l('Monri Components (embedded)')
+                        ]
+                    ],
+                    'required' => true
+                ],
+                [
+                    'type' => 'radio',
+                    'label' => $this->l('Keep configuration values on Module reset'),
+                    'name' => MonriConstants::KEY_KEEP_CONFIG_ON_RESET,
+                    'required' => false,
+                    'hint' => $this->l('Useful for module updates'),
+                    'values' => [
+                        [
+                            'id' => MonriConstants::YES,
+                            'value' => MonriConstants::YES,
+                            'label' => $this->l('Yes, keep')
+                        ],
+                        [
+                            'id' => MonriConstants::NO,
+                            'value' => MonriConstants::NO,
+                            'label' => $this->l('No, reset')
+                        ]
+                    ],
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Web Service Key, required for Monri Components'),
+                    'name' => MonriConstants::KEY_WEB_SERVICE_KEY,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('If you don\'t know how to get Web Service Key please contact support@monri.com')
+                ],
             ],
             'submit' => array(
                 'title' => $this->l('Save'),
@@ -721,12 +780,17 @@ class Monri extends PaymentModule
 
             $merchant_key_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_KEY_TEST);
             $merchant_authenticity_token_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+            $integration_mode = (string)Tools::getValue(MonriConstants::KEY_INTEGRATION_MODE);
+            $web_service_key = (string)Tools::getValue(MonriConstants::KEY_WEB_SERVICE_KEY);
+            $keep_config_on_reset = Tools::getValue(MonriConstants::KEY_KEEP_CONFIG_ON_RESET);
         } else {
             $merchant_key_live = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_PROD);
             $merchant_authenticity_token_live = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
 
             $mode = Configuration::get(MonriConstants::KEY_MODE);
-
+            $integration_mode = Configuration::get(MonriConstants::KEY_INTEGRATION_MODE);
+            $keep_config_on_reset = Configuration::get(MonriConstants::KEY_KEEP_CONFIG_ON_RESET);
+            $web_service_key = Configuration::get(MonriConstants::KEY_WEB_SERVICE_KEY);
             $merchant_key_test = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_TEST);
             $merchant_authenticity_token_test = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         }
@@ -738,6 +802,9 @@ class Monri extends PaymentModule
         $helper->fields_value[MonriConstants::KEY_MERCHANT_KEY_TEST] = $merchant_key_test;
         $helper->fields_value[MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST] = $merchant_authenticity_token_test;
         $helper->fields_value[MonriConstants::KEY_MODE] = $mode;
+        $helper->fields_value[MonriConstants::KEY_INTEGRATION_MODE] = $integration_mode ? $integration_mode : MonriConstants::INTEGRATION_MODE_REDIRECT;
+        $helper->fields_value[MonriConstants::KEY_KEEP_CONFIG_ON_RESET] = $keep_config_on_reset ? $keep_config_on_reset : MonriConstants::NO;
+        $helper->fields_value[MonriConstants::KEY_WEB_SERVICE_KEY] = $web_service_key;
 
         return $helper->generateForm($fields_form);
     }
@@ -752,6 +819,7 @@ class Monri extends PaymentModule
         return true;
         $names = [
             MonriConstants::KEY_MODE,
+            MonriConstants::KEY_INTEGRATION_MODE,
             MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
             MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
             MonriConstants::KEY_MERCHANT_KEY_TEST,
@@ -772,74 +840,27 @@ class Monri extends PaymentModule
 
     public static function getMerchantKey()
     {
-        $mode = Configuration::get(MonriConstants::KEY_MODE);
-        return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+        return Configuration::get(self::isModuleModeProd() ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+    }
+
+    public static function getIntegrationMode()
+    {
+        return Configuration::get(MonriConstants::KEY_INTEGRATION_MODE);
     }
 
     public static function getAuthenticityToken()
     {
-        $mode = Configuration::get(MonriConstants::KEY_MODE);
-        return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+        return Configuration::get(self::isModuleModeProd() ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+    }
+
+    public static function isModuleModeProd()
+    {
+        return Configuration::get(MonriConstants::KEY_MODE) == MonriConstants::MODE_PROD;
     }
 
     public static function baseUrl()
     {
-        $mode = Configuration::get(MonriConstants::KEY_MODE);
-        return $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
-    }
-
-    public static function baseShopUrl()
-    {
-        return Context::getContext()->shop->getBaseURL(true);
-    }
-
-    public static function getPrestashopWebServiceApiKey()
-    {
-        // TODO: add a a monri plugin
-        return 'ikaRpebIzB96FOJu944FN0H2CRafjj33';
-    }
-
-    public static function getPrestashopAuthenticationHeader()
-    {
-        return base64_encode(Monri::getPrestashopWebServiceApiKey() . ':');
-    }
-
-    public static function webServiceGetJson($path)
-    {
-        $authorizationKey = Monri::getPrestashopAuthenticationHeader();
-        $url = Monri::webServiceUrl($path);
-        return Monri::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
-    }
-
-    public static function webServiceUrl($path)
-    {
-        return Monri::baseShopUrl() . $path;
-    }
-
-    public static function curlGetJSON($url, $headers)
-    {
-        $request = curl_init();
-        $headers[] = 'Accept: application/json';
-        $curlOptions = [
-            CURLOPT_URL => $url,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_SSL_VERIFYPEER => 1,
-            CURLOPT_SSL_VERIFYHOST => 0
-        ];
-        // Set options
-        curl_setopt_array($request, $curlOptions);
-        $apiResponse = curl_exec($request);
-        $httpCode = (int)curl_getinfo($request, CURLINFO_HTTP_CODE);
-        $curlDetails = curl_getinfo($request);
-        curl_close($request);
-        return [
-            'response' => json_decode($apiResponse, true),
-            'http_code' => $httpCode,
-            'curl_details' => $curlDetails,
-            'request_headers' => $headers,
-            'url' => $url
-        ];
+        return self::isModuleModeProd() ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
     }
 
     public static function curlPostXml($url, $xml)
@@ -872,11 +893,6 @@ class Monri extends PaymentModule
         $xml = simplexml_load_string($input);
         $json = json_encode($xml);
         return json_decode($json, TRUE);
-    }
-
-    public static function applyMonriDiscount()
-    {
-
     }
 
     public static function disableCartRule($cart_rule_name, $context)

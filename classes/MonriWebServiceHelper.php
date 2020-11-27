@@ -2,20 +2,14 @@
 
 class MonriWebServiceHelper
 {
-    public static function baseShopUrl()
-    {
-        return Context::getContext()->shop->getBaseURL(true);
-    }
-
     public static function getPrestashopWebServiceApiKey()
     {
-        // TODO: add a a monri plugin
-        return 'ikaRpebIzB96FOJu944FN0H2CRafjj33';
+        return Configuration::get(MonriConstants::KEY_WEB_SERVICE_KEY);
     }
 
     public static function getPrestashopAuthenticationHeader()
     {
-        return base64_encode(Monri::getPrestashopWebServiceApiKey() . ':');
+        return base64_encode(self::getPrestashopWebServiceApiKey() . ':');
     }
 
     /**
@@ -41,7 +35,7 @@ class MonriWebServiceHelper
             return null;
         }
 
-        $rv = Monri::webServiceGetJson("/api/specific_price_rules/$id?output_format=JSON");
+        $rv = self::webServiceGetJson("/api/specific_price_rules/$id?output_format=JSON");
         if (isset($rv['response']['specific_price_rule'])) {
             $specific_price_rule = $rv['response']['specific_price_rule'];
             if (strpos($specific_price_rule['name'], $name) === 0) {
@@ -69,14 +63,19 @@ class MonriWebServiceHelper
 
     public static function webServiceGetJson($path)
     {
-        $authorizationKey = Monri::getPrestashopAuthenticationHeader();
-        $url = Monri::webServiceUrl($path);
-        return Monri::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
+        $authorizationKey = self::getPrestashopAuthenticationHeader();
+        $url = self::webServiceUrl($path);
+        return self::curlGetJSON($url, array("Authorization: Basic $authorizationKey"));
     }
 
     public static function webServiceUrl($path)
     {
-        return Monri::baseShopUrl() . $path;
+        return self::baseShopUrl() . $path;
+    }
+
+    public static function baseShopUrl()
+    {
+        return Context::getContext()->shop->getBaseURL(true);
     }
 
     public static function curlGetJSON($url, $headers)

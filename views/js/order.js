@@ -12,7 +12,33 @@ jQuery(document).ready(function () {
     });
     var components = monri.components({"clientSecret": clientSecret});
     // Create an instance of the card Component.
-    var card = components.create('card');
+    var card = components.create('card', {
+        style: {
+            invalid: {
+                color: 'red'
+            },
+            complete: {
+                color: '#419E41'
+            },
+            label: {
+                base: {
+                    color: 'blue',
+                    textTransform: 'none'
+                },
+                invalid: {
+                    color: 'gray'
+                },
+                complete: {
+                    color: '#419E41'
+                }
+            },
+            input: {
+                base: {
+                    color: "#419E41"
+                }
+            }
+        },
+    });
     card.mount('card-element-' + clientSecret);
 
     var $cardDiscount = $("#card-discount");
@@ -74,8 +100,8 @@ jQuery(document).ready(function () {
                 ajax: true,
                 action: 'update',
                 card_data: cardData,
-                client_secret: clientSecret
-                // token: token
+                client_secret: clientSecret,
+                token: staticToken
             },
             success: function (data) {
                 callback(data)
@@ -94,8 +120,8 @@ jQuery(document).ready(function () {
                 ajax: true,
                 action: 'price',
                 card_data: cardData,
-                client_secret: clientSecret
-                // token: token
+                client_secret: clientSecret,
+                token: staticToken
             },
             success: function (data) {
                 callback(data)
@@ -144,7 +170,9 @@ jQuery(document).ready(function () {
 
         updatePrice(cardData, function (price) {
             monri.confirmPayment(card, {
-                custom_params: price.custom_params_products
+                customParams: JSON.stringify({
+                    custom_products: price.custom_params_products
+                })
             }).then(function (result) {
                 if (result.error) {
                     alert("Transakcija odbijena, pokušajte ponovo")
