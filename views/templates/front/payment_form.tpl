@@ -33,8 +33,9 @@
         <!-- A Monri Component will be inserted here. -->
     </div>
     <!-- Used to display Component errors. -->
-    <div id="card-errors" role="alert"></div>
-    <div id="card-discount" role=""></div>
+    <div id="card-errors"  style="margin-bottom: 10px" role="alert"></div>
+    <hr id="card-errors-discounts-hr" style="display: none">
+    <div id="card-discount" style="margin-top: 10px"></div>
 </form>
 
 <script src="{$base_url}/dist/components.js"></script>

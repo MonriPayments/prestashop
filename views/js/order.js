@@ -77,13 +77,29 @@ jQuery(document).ready(function () {
         })
     });
 
+    var cardChangeError;
+
+    card.onChange(function(event) {
+        var displayError = document.getElementById('card-errors');
+        cardChangeError = event.error;
+        if (event.error) {
+            displayError.textContent = event.error.message;
+            $("#card-errors-discounts-hr").show();
+        } else {
+            displayError.textContent = '';
+            $("#card-errors-discounts-hr").hide();
+        }
+    });
+
     function resetPrice(cardData, callback) {
         $.ajax({
-            type: 'GET',
+            type: 'POST',
             cache: false,
             dataType: 'json',
             url: MonriConfig.resetPriceEndpoint,
-            data: {},
+            data: {
+                action: 'reset'
+            },
             success: function (data) {
                 callback(data)
             }
@@ -144,12 +160,6 @@ jQuery(document).ready(function () {
         if (payUsingMonriActive && lastAmount !== '') {
             cartTotalObject.html(lastAmount);
         }
-
-        if (!payUsingMonriActive) {
-            resetPrice(function (data) {
-
-            });
-        }
     });
 
     form.on('submit', function (e) {
@@ -157,6 +167,12 @@ jQuery(document).ready(function () {
             return;
         }
         e.preventDefault();
+
+        if(cardChangeError != null) {
+            alert(cardChangeError.message)
+            return;
+        }
+
         var priceCardData = {
             "bin": cardData.bin,
             "brand": cardData.brand,
@@ -179,7 +195,9 @@ jQuery(document).ready(function () {
                 } else {
                     var paymentResult = result.result;
                     if (paymentResult.status !== "approved") {
-                        alert("Transakcija odbijena, pokušajte ponovo")
+                        resetPrice(cardData, function () {
+                            alert(paymentResult.message)
+                        })
                     } else {
                         preventDefault = false;
                         $("input[name=monri-order-number]").val(paymentResult.order_number)
