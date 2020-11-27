@@ -24,7 +24,10 @@ class MonriWebServiceHelper
         }
         $special_prices = [];
         foreach ($rv['response']['specific_prices'] as $price) {
-            $special_prices[] = self::getSpecificPrice($price['id']);
+            $v = self::getSpecificPrice($price['id']);
+            if ($v != null) {
+                $special_prices[] = $v;
+            }
         }
         return $special_prices;
     }

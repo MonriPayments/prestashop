@@ -42,7 +42,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         parent::initContent();
     }
 
-    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.10;
+    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.15;
 
     private function getPriceForDiscount($product)
     {
@@ -61,18 +61,19 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             die("Unexpected error occurred! Missing clientSecret");
         }
 
+        $total_price_with_discounts = 0;
+
         try {
             $cart = $this->context->cart;
             $client_secret = $_POST['client_secret'];
             Monri::disableCartRule('ucbm_discount', $this->context);
             $products = $cart->getProducts();
-            $discounts = [];
 
             $has_monri_discount = isset($_POST['card_data']['discount']);
 
-            $monri_discount_percentage = 0;
+            $monri_discount_percentage = self::CREDIT_CARD_PAYMENT_DISCOUNT;
 
-            if ($has_monri_discount) {
+            if ($has_monri_discount && $_POST['card_data']['discount']) {
                 $monri_discount = $_POST['card_data']['discount'];
                 $original_amount = intval($monri_discount['original_amount']);
                 $amount = intval($monri_discount['amount']);
@@ -80,7 +81,6 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             }
 
             $custom_params_products = [];
-            $total_price_with_discounts = 0;
 
             // 1. fetch products
             // 2. fetch special prices
@@ -94,40 +94,26 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                     'mpc' => $mpc,
                     'mpc_with_discount' => $mpc_with_discount,
                     'discount_percentage' => $discount,
+                    'discount' => $discount,
+                    'monri_discount_percentage' => $monri_discount_percentage,
                     'discount_amount' => $mpc - $mpc_with_discount,
                     'product_id' => $product['id_product']
                 ];
 
                 $total_price_with_discounts = $total_price_with_discounts + $mpc_with_discount;
-
-                $discounts[] = [
-                    'discount_percentage' => $discount,
-                    'mpc' => $mpc,
-                    // Price without VAT
-                    'price' => $product['price'],
-                    'price_without_reduction_without_tax' => $product['price_without_reduction_without_tax'],
-                    'discount_amount' => $mpc_with_discount,
-                    "total_wt" => $product["total_wt"],
-                    // Price with VAT
-                    "price_wt" => $product["price_wt"],
-                    'has_discount' => $product['total'] != $product['price_without_reduction_without_tax'],
-                    'specific_prices' => $product['specific_prices'],
-                    'product' => $product,
-                    'discount' => $discount,
-                ];
             }
 
             $taxConfiguration = new TaxConfiguration();
-            $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
 
+            $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
             if ($updatePrice) {
                 if ($discount_amount > 0) {
                     Monri::addCartRule('ucbm_discount', 'Unicredit popust', $this->context, $discount_amount);
+                    Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
                 } else {
                     Monri::disableCartRule('ucbm_discount', $this->context);
                 }
                 // update amount
-                Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
             }
 
             $rv = [
@@ -137,7 +123,10 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             ];
             die(Tools::jsonEncode($rv));
         } catch (Exception $exception) {
-            die(Tools::jsonEncode(['error' => $exception]));
+            die(Tools::jsonEncode(['error' => $exception,
+                'trace' => $exception->getTraceAsString(),
+//                'total_price_with_discounts' => $total_price_with_discounts
+            ]));
         }
     }
 

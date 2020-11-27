@@ -91,7 +91,7 @@ jQuery(document).ready(function () {
         }
     });
 
-    function resetPrice(cardData, callback) {
+    function resetPrice(cardData, callback, err) {
         $.ajax({
             type: 'POST',
             cache: false,
@@ -102,11 +102,16 @@ jQuery(document).ready(function () {
             },
             success: function (data) {
                 callback(data)
+            },
+            error: function (data) {
+                if (typeof err === "function") {
+                    err(data);
+                }
             }
         });
     }
 
-    function updatePrice(cardData, callback) {
+    function updatePrice(cardData, callback, err) {
         $.ajax({
             type: 'POST',
             cache: false,
@@ -121,11 +126,16 @@ jQuery(document).ready(function () {
             },
             success: function (data) {
                 callback(data)
+            },
+            error: function (data) {
+                if (typeof err === "function") {
+                    err(data);
+                }
             }
         });
     }
 
-    function fetchPrice(cardData, callback) {
+    function fetchPrice(cardData, callback, err) {
         $.ajax({
             type: 'POST',
             cache: false,
@@ -141,6 +151,11 @@ jQuery(document).ready(function () {
             },
             success: function (data) {
                 callback(data)
+            },
+            error: function (data) {
+                if (typeof err === "function") {
+                    err(data);
+                }
             }
         });
     }
@@ -206,6 +221,8 @@ jQuery(document).ready(function () {
                     }
                 }
             })
+        },function (err) {
+            alert("Desila se greška prilikom procesiranja zahtjeva, molimo pokušajte ponovo")
         })
 
     })
