@@ -88,7 +88,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 4. apply discount for product if it has monri discount enabled
             foreach ($products as $product) {
                 $discount = self::getMonriDiscount($product['id_product'], $monri_discount_percentage);
-                $mpc = self::getPriceForDiscount($product);
+                $mpc = self::getPriceForDiscount($product) * $product['quantity'];
                 $mpc_with_discount = $mpc * (1 - $discount);
                 $custom_params_products[] = [
                     'mpc' => $mpc,
@@ -104,7 +104,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             }
 
             $taxConfiguration = new TaxConfiguration();
-
+            $total_price_with_discounts = $total_price_with_discounts + $cart->getPackageShippingCost();
             $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
             if ($updatePrice) {
                 if ($discount_amount > 0) {
