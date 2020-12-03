@@ -42,7 +42,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         parent::initContent();
     }
 
-    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.15;
+    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.10;
 
     private function getPriceForDiscount($product)
     {
