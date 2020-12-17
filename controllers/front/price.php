@@ -24,11 +24,6 @@
 *  International Registered Trademark & Property of PrestaShop SA
 */
 
-function mapProductSpecificPrice($m)
-{
-    return $m['id_specific_price'];
-}
-
 /**
  * @since 1.5.0
  */
@@ -66,12 +61,13 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         try {
             $cart = $this->context->cart;
             $client_secret = $_POST['client_secret'];
-            Monri::disableCartRule('ucbm_discount', $this->context);
+            Monri::disableCartRule('monri_special_discount', $this->context);
             $products = $cart->getProducts();
 
             $has_monri_discount = isset($_POST['card_data']['discount']);
 
-            $monri_discount_percentage = self::CREDIT_CARD_PAYMENT_DISCOUNT;
+            $default_discount = self::CREDIT_CARD_PAYMENT_DISCOUNT;
+            $monri_discount_percentage = 0;
 
             if ($has_monri_discount && $_POST['card_data']['discount']) {
                 $monri_discount = $_POST['card_data']['discount'];
@@ -87,7 +83,10 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
             foreach ($products as $product) {
-                $discount = self::getMonriDiscount($product['id_product'], $monri_discount_percentage);
+                $discount = self::getSpecialPriceDiscount($product, $default_discount, [
+                    new MonriDiscount(isset($_POST['card_data']) ? $_POST['card_data'] : []),
+                    new MonriCardDiscount(0.15, '2020-12-17', '2020-12-24')
+                ]);
                 $mpc = self::getPriceForDiscount($product) * $product['quantity'];
                 $mpc_with_discount = $mpc * (1 - $discount);
                 $custom_params_products[] = [
@@ -108,10 +107,10 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
             if ($updatePrice) {
                 if ($discount_amount > 0) {
-                    Monri::addCartRule('ucbm_discount', 'Unicredit popust', $this->context, $discount_amount);
+                    Monri::addCartRule('monri_special_discount', 'Specijalni popust', $this->context, $discount_amount);
                     Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
                 } else {
-                    Monri::disableCartRule('ucbm_discount', $this->context);
+                    Monri::disableCartRule('monri_special_discount', $this->context);
                 }
                 // update amount
             }
@@ -136,28 +135,34 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         $this->calculatePrice(false);
     }
 
-    static function getMonriDiscount($product_id, $discount)
+    static function getSpecialPriceDiscount($product, $default_discount, $discount_rules)
     {
+        $product_id = $product['id_product'];
         // get all special prices
         $specific_prices = MonriWebServiceHelper::getSpecialPricesForProduct($product_id);
 
-        $monri_specific_price = null;
+        $discount_percentage = 0;
+        foreach ($discount_rules as $rule) {
+            /**
+             * @var $rule IMonriDiscount
+             */
 
-        foreach ($specific_prices as $specific_price) {
-            $specific_price_rule = MonriWebServiceHelper::getSpecificPriceRule($specific_price['id_specific_price_rule']);
-            if ($specific_price_rule == null) {
+            if (!$rule->isEligible([], $product, $specific_prices)) {
                 continue;
-            } else {
-                $monri_specific_price = $specific_price_rule;
-                break;
+            }
+
+            $discount_percentage = $rule->discountPercentage([], $product);
+
+            if ($discount_percentage == 0) {
+                continue;
             }
         }
 
-        if ($monri_specific_price == null) {
-            return self::CREDIT_CARD_PAYMENT_DISCOUNT;
+        if ($discount_percentage == 0) {
+            $discount_percentage = $default_discount;
         }
 
-        return $discount;
+        return $discount_percentage;
     }
 
 }

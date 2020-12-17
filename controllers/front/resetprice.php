@@ -39,7 +39,7 @@ class MonriResetPriceModuleFrontController extends ModuleFrontController
 
     public function displayAjaxReset()
     {
-        Monri::disableCartRule('ucbm_discount', $this->context);
+        Monri::disableCartRule('monri_special_discount', $this->context);
         die('OK');
     }
 }

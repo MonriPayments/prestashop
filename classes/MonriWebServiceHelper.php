@@ -32,7 +32,7 @@ class MonriWebServiceHelper
         return $special_prices;
     }
 
-    public static function getSpecificPriceRule($id, $name = 'UCB')
+    public static function getSpecificPriceRule($id, $name)
     {
         if (!$id) {
             return null;

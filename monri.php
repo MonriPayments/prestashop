@@ -10,6 +10,9 @@ include_once 'classes/MonriConstants.php';
 include_once 'classes/MonriUtils.php';
 include_once 'classes/MonriPaymentFee.php';
 include_once 'classes/MonriWebServiceHelper.php';
+include_once 'classes/IMonriDiscount.php';
+include_once 'classes/MonriCardDiscount.php';
+include_once 'classes/MonriDiscount.php';
 
 
 class Monri extends PaymentModule
@@ -209,7 +212,7 @@ class Monri extends PaymentModule
 
             $customer = $this->context->customer;
             $cart = $this->context->cart;
-            self::disableCartRule('ucbm_discount', $this->context);
+            self::disableCartRule('monri_special_discount', $this->context);
             $base_url = Monri::baseUrl();
             $authenticity_token = Monri::getAuthenticityToken();
             $merchant_key = Monri::getMerchantKey();
@@ -280,7 +283,7 @@ class Monri extends PaymentModule
 
         $order = $params['order'];
         if ($order->payment != "Monri") {
-            Monri::disableCartRule('ucbm_discount', $this->context);
+            Monri::disableCartRule('monri_special_discount', $this->context);
             return false;
         }
 
