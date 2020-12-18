@@ -23,4 +23,9 @@ interface IMonriDiscount {
      * @return Stringable
      */
     function message();
+
+    /**
+     * @return string
+     */
+    function name();
 }

@@ -13,6 +13,7 @@ include_once 'classes/MonriWebServiceHelper.php';
 include_once 'classes/IMonriDiscount.php';
 include_once 'classes/MonriCardDiscount.php';
 include_once 'classes/MonriDiscount.php';
+include_once 'classes/AllCardsMonriDiscount.php';
 
 
 class Monri extends PaymentModule

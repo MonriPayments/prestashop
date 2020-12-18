@@ -13,6 +13,7 @@ class MonriDiscount implements IMonriDiscount
     public function __construct($cardData)
     {
         $this->cardData = $cardData;
+        $this->monriDiscountPercentage = 0;
     }
 
     function discountPercentage($request, $product)
@@ -28,11 +29,9 @@ class MonriDiscount implements IMonriDiscount
     {
         $has_monri_discount = isset($this->cardData['discount']);
 
-        if (!$has_monri_discount) {
+        if (!$has_monri_discount || !$this->cardData['discount']) {
             return false;
         }
-
-        $this->monriDiscountPercentage = 0;
 
         $monri_discount = $this->cardData['discount'];
         $original_amount = intval($monri_discount['original_amount']);
@@ -61,4 +60,11 @@ class MonriDiscount implements IMonriDiscount
     {
         return $this->cardData['message'];
     }
+
+    function name()
+    {
+        return "monri_pg_discount";
+    }
+
+
 }

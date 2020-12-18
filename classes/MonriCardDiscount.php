@@ -54,4 +54,11 @@ class MonriCardDiscount implements IMonriDiscount {
     {
         return "Plaćajte debitnim karticama i ostvarite 15% popusta na kupovinu odabranog asortimana u IMTEC web shopu-u od 18.12.2020 do 24.12.2020 ili do isteka zaliha.";
     }
+
+    function name()
+    {
+        return "monri_module_discount";
+    }
+
+
 }

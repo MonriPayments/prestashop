@@ -37,8 +37,6 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         parent::initContent();
     }
 
-    const CREDIT_CARD_PAYMENT_DISCOUNT = 0.10;
-
     private function getPriceForDiscount($product)
     {
         return $product['price_without_reduction'];
@@ -64,18 +62,6 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             Monri::disableCartRule('monri_special_discount', $this->context);
             $products = $cart->getProducts();
 
-            $has_monri_discount = isset($_POST['card_data']['discount']);
-
-            $default_discount = self::CREDIT_CARD_PAYMENT_DISCOUNT;
-            $monri_discount_percentage = 0;
-
-            if ($has_monri_discount && $_POST['card_data']['discount']) {
-                $monri_discount = $_POST['card_data']['discount'];
-                $original_amount = intval($monri_discount['original_amount']);
-                $amount = intval($monri_discount['amount']);
-                $monri_discount_percentage = ($original_amount - $amount) / $original_amount;
-            }
-
             $custom_params_products = [];
 
             // 1. fetch products
@@ -83,10 +69,12 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
             foreach ($products as $product) {
-                $discount = self::getSpecialPriceDiscount($product, $default_discount, [
+                $discount_result = self::getSpecialPriceDiscount($product, [
                     new MonriDiscount(isset($_POST['card_data']) ? $_POST['card_data'] : []),
-                    new MonriCardDiscount(0.15, '2020-12-17', '2020-12-24')
+                    new MonriCardDiscount(0.15, '2020-12-17', '2020-12-24'),
+                    new AllCardsMonriDiscount()
                 ]);
+                $discount = $discount_result['discount_percentage'];
                 $mpc = self::getPriceForDiscount($product) * $product['quantity'];
                 $mpc_with_discount = $mpc * (1 - $discount);
                 $custom_params_products[] = [
@@ -94,9 +82,9 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                     'mpc_with_discount' => $mpc_with_discount,
                     'discount_percentage' => $discount,
                     'discount' => $discount,
-                    'monri_discount_percentage' => $monri_discount_percentage,
                     'discount_amount' => $mpc - $mpc_with_discount,
-                    'product_id' => $product['id_product']
+                    'product_id' => $product['id_product'],
+                    'discount_result' => $discount_result
                 ];
 
                 $total_price_with_discounts = $total_price_with_discounts + $mpc_with_discount;
@@ -116,6 +104,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             }
 
             $rv = [
+                'total_price_with_discounts' => $total_price_with_discounts,
                 'amount' => Tools::displayPrice($total_price_with_discounts),
                 'discount_amount' => $discount_amount,
                 'custom_params_products' => $custom_params_products
@@ -135,7 +124,12 @@ class MonriPriceModuleFrontController extends ModuleFrontController
         $this->calculatePrice(false);
     }
 
-    static function getSpecialPriceDiscount($product, $default_discount, $discount_rules)
+    /**
+     * @param $product
+     * @param $discount_rules
+     * @return array
+     */
+    static function getSpecialPriceDiscount($product, $discount_rules)
     {
         $product_id = $product['id_product'];
         // get all special prices
@@ -155,14 +149,18 @@ class MonriPriceModuleFrontController extends ModuleFrontController
 
             if ($discount_percentage == 0) {
                 continue;
+            } else {
+                return [
+                    'discount_percentage' => $discount_percentage,
+                    'name' => $rule->name()
+                ];
             }
         }
 
-        if ($discount_percentage == 0) {
-            $discount_percentage = $default_discount;
-        }
-
-        return $discount_percentage;
+        return [
+            'discount_percentage' => $discount_percentage,
+            'name' => 'unknown'
+        ];
     }
 
 }
