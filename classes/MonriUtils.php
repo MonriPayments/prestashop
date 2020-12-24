@@ -8,4 +8,16 @@ class MonriUtils {
             return $default;
         }
     }
+
+    /**
+     * @param $from
+     * @param $to
+     * @return bool
+     */
+    static function isDateBetween($from, $to) {
+        $from = strtotime($from);
+        $to = strtotime($to);
+        $now = strtotime(date('Y-m-d'));
+        return $from <= $now && $now <= $to;
+    }
 }
