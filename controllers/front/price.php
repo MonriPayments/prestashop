@@ -71,8 +71,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             foreach ($products as $product) {
                 $discount_result = self::getSpecialPriceDiscount($product, [
                     new MonriDiscount(isset($_POST['card_data']) ? $_POST['card_data'] : []),
-                    // new MonriCardDiscount(0.19, '2020-12-24', '2021-01-03'),
-                    new MonriCardDiscount(0.15, '2021-01-04', '2024-01-01'),
+                    new MonriCardDiscount(0.19, '2021-02-12', '2021-02-14'),
                     new AllCardsMonriDiscount('2020-12-25', '2023-01-31', 0.10)
                 ]);
                 $discount = $discount_result['discount_percentage'];
