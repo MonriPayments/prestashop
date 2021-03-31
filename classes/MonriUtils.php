@@ -15,9 +15,16 @@ class MonriUtils {
      * @return bool
      */
     static function isDateBetween($from, $to) {
-        $from = strtotime($from);
-        $to = strtotime($to);
-        $now = strtotime(date('Y-m-d'));
-        return $from <= $now && $now <= $to;
+        try {
+            $tz = 'Europe/Sarajevo';
+            $timezone = new DateTimeZone($tz);
+            $from = strtotime((new DateTime($from, $timezone))->format('Y-m-d H:i:s'));
+            $to = strtotime((new DateTime($to, $timezone))->format('Y-m-d H:i:s'));
+            $now = strtotime((new DateTime('now', $timezone))->format('Y-m-d H:i:s'));
+            return $from <= $now && $now <= $to;
+        } catch (Exception $e) {
+            // TODO: handle this
+            return false;
+        }
     }
 }
