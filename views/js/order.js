@@ -211,7 +211,7 @@ jQuery(document).ready(function () {
                     var paymentResult = result.result;
                     if (paymentResult.status !== "approved") {
                         resetPrice(cardData, function () {})
-                        alert(paymentResult.message)
+                        alert("Transakcija odbijena. Pokušajte ponovo.")
                     } else {
                         preventDefault = false;
                         $("input[name=monri-order-number]").val(paymentResult.order_number)
