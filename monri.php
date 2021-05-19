@@ -141,8 +141,24 @@ class Monri extends PaymentModule
 
     public function getExternalPaymentOption($params)
     {
+        $externalOption = null;
+        
+        if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
+            $externalOption = new \PrestaShop\PrestaShop\Core\Payment\PaymentOption();
+        } else {
+            if(!class_exists('Core_Business_Payment_PaymentOption')) {
+                throw new \Exception(
+                    sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_)
+                );
+            }
 
-        $externalOption = new PaymentOption();
+            $externalOption = new Core_Business_Payment_PaymentOption();
+        }
+
+        if(!$externalOption) {
+            throw new \Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
+        }
+
         $customer = $this->context->customer;
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
