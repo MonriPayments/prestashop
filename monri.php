@@ -1,8 +1,5 @@
 <?php
 
-use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
-
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -38,6 +35,8 @@ class Monri extends PaymentModule
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
 
+    public $context;
+
     public function __construct()
     {
         $this->name = 'monri';
@@ -61,6 +60,89 @@ class Monri extends PaymentModule
         if (!count(Currency::checkPaymentCurrencies($this->id))) {
             $this->warning = $this->l('No currency has been set for this module.');
         }
+
+        $this->page = basename(__FILE__, '.php');
+
+        $this->loadDefaults();
+    }
+
+    protected function loadDefaults()
+    {
+        $payment_method = Configuration::get('PAYPAL_PAYMENT_METHOD');
+        $order_process_type = (int) Configuration::get('PS_ORDER_PROCESS_TYPE');
+
+        if (Tools::getValue('paypal_ec_canceled') || $this->context->cart === false) {
+            unset($this->context->cookie->express_checkout);
+        }
+
+        if (version_compare(_PS_VERSION_, '1.5.0.2', '>=')) {
+            $version = Db::getInstance()->getValue('SELECT version FROM `'._DB_PREFIX_.'module` WHERE name = \''.pSQL($this->name).'\'');
+            if (empty($version) === true) {
+                Db::getInstance()->execute('
+                    UPDATE `'._DB_PREFIX_.'module` m
+                    SET m.version = \''.bqSQL($this->version).'\'
+                    WHERE m.name = \''.bqSQL($this->name).'\'');
+            }
+        }
+
+        if (defined('_PS_ADMIN_DIR_')) {
+            /* Backward compatibility */
+            if (version_compare(_PS_VERSION_, '1.5', '<')) {
+                //$this->backwardCompatibilityChecks();
+            }
+
+            /* Upgrade and compatibility checks */
+            //$this->runUpgrades();
+            //$this->compatibilityCheck();
+            //$this->warningsCheck();
+        } else {
+            if (isset($this->context->cookie->express_checkout)) {
+                $this->context->smarty->assign('paypal_authorization', true);
+            }
+
+            $isECS = false;
+            if (isset($this->context->cookie->express_checkout)) {
+                $cookie_ECS = unserialize($this->context->cookie->express_checkout);
+                if (isset($cookie_ECS['token']) && isset($cookie_ECS['payer_id'])) {
+                    $isECS = true;
+                }
+            }
+
+            if (($order_process_type == 1) && ((int) $payment_method == HSS)) {
+                $this->context->smarty->assign('paypal_order_opc', true);
+            } elseif (($order_process_type == 1) && ((bool) Tools::getValue('isPaymentStep') == true || $isECS)) {
+                $shop_url = PayPal::getShopDomainSsl(true, true);
+                if (version_compare(_PS_VERSION_, '1.5', '<')) {
+                    $link = $shop_url._MODULE_DIR_.$this->name.'/express_checkout/payment.php';
+                    $this->context->smarty->assign(
+                        'paypal_confirmation',
+                        $link.'?'.http_build_query(array('get_confirmation' => true), '', '&')
+                    );
+                } else {
+                    $values = array('fc' => 'module', 'module' => 'paypal', 'controller' => 'confirm',
+                        'get_confirmation' => true);
+                    $this->context->smarty->assign('paypal_confirmation', $shop_url.__PS_BASE_URI__.'?'.http_build_query($values));
+                }
+            }
+        }
+    }
+
+    public function hookPayment($params)
+    {
+        if (!$this->active) {
+            return;
+        }
+
+        return 'payment rendering';
+    }
+
+    public function hookHeader($params)
+    {
+        if (!$this->active) {
+            return;
+        }
+
+        return 'header rendering';
     }
 
     /**
@@ -81,9 +163,23 @@ class Monri extends PaymentModule
             return false;
         }
 
-        return parent::install()
+
+        return (
+            parent::install()
+            && $this->registerHook( 'header' )
+            && $this->registerHook( 'payment' )
+            && $this->registerHook( 'paymentReturn' )
+            && $this->registerHook( 'DisplayAdminOrder' )
+            && $this->registerHook( 'BackOfficeHeader' )
+        );
+
+        /*return parent::install()
             && $this->registerHook('paymentOptions')
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentReturn');*/
+    }
+
+    public function hookBackOfficeHeader() {
+        return 'backoffice header rendering';
     }
 
     /**
@@ -141,6 +237,7 @@ class Monri extends PaymentModule
 
     public function getExternalPaymentOption($params)
     {
+
         $externalOption = null;
         
         if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
@@ -158,7 +255,7 @@ class Monri extends PaymentModule
         if(!$externalOption) {
             throw new \Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
         }
-
+        
         $customer = $this->context->customer;
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
