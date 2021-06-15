@@ -27,14 +27,6 @@ class Monri extends PaymentModule
     public $address;
     public $extra_mail_vars;
 
-    const MODE_PROD = 'prod';
-    const MODE_TEST = 'test';
-    const KEY_MODE = 'MONRI_MODE';
-    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
-    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
-
     public $context;
 
     public function __construct()
@@ -42,14 +34,14 @@ class Monri extends PaymentModule
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
         $this->version = '1.0.0';
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '1.6', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'submit'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
-
         $this->bootstrap = true;
+
         parent::__construct();
 
         $this->meta_title = $this->l('Monri');
@@ -62,69 +54,6 @@ class Monri extends PaymentModule
         }
 
         $this->page = basename(__FILE__, '.php');
-
-        $this->loadDefaults();
-    }
-
-    protected function loadDefaults()
-    {
-        $payment_method = Configuration::get('PAYPAL_PAYMENT_METHOD');
-        $order_process_type = (int) Configuration::get('PS_ORDER_PROCESS_TYPE');
-
-        if (Tools::getValue('paypal_ec_canceled') || $this->context->cart === false) {
-            unset($this->context->cookie->express_checkout);
-        }
-
-        if (version_compare(_PS_VERSION_, '1.5.0.2', '>=')) {
-            $version = Db::getInstance()->getValue('SELECT version FROM `'._DB_PREFIX_.'module` WHERE name = \''.pSQL($this->name).'\'');
-            if (empty($version) === true) {
-                Db::getInstance()->execute('
-                    UPDATE `'._DB_PREFIX_.'module` m
-                    SET m.version = \''.bqSQL($this->version).'\'
-                    WHERE m.name = \''.bqSQL($this->name).'\'');
-            }
-        }
-
-        if (defined('_PS_ADMIN_DIR_')) {
-            /* Backward compatibility */
-            if (version_compare(_PS_VERSION_, '1.5', '<')) {
-                //$this->backwardCompatibilityChecks();
-            }
-
-            /* Upgrade and compatibility checks */
-            //$this->runUpgrades();
-            //$this->compatibilityCheck();
-            //$this->warningsCheck();
-        } else {
-            if (isset($this->context->cookie->express_checkout)) {
-                $this->context->smarty->assign('paypal_authorization', true);
-            }
-
-            $isECS = false;
-            if (isset($this->context->cookie->express_checkout)) {
-                $cookie_ECS = unserialize($this->context->cookie->express_checkout);
-                if (isset($cookie_ECS['token']) && isset($cookie_ECS['payer_id'])) {
-                    $isECS = true;
-                }
-            }
-
-            if (($order_process_type == 1) && ((int) $payment_method == HSS)) {
-                $this->context->smarty->assign('paypal_order_opc', true);
-            } elseif (($order_process_type == 1) && ((bool) Tools::getValue('isPaymentStep') == true || $isECS)) {
-                $shop_url = PayPal::getShopDomainSsl(true, true);
-                if (version_compare(_PS_VERSION_, '1.5', '<')) {
-                    $link = $shop_url._MODULE_DIR_.$this->name.'/express_checkout/payment.php';
-                    $this->context->smarty->assign(
-                        'paypal_confirmation',
-                        $link.'?'.http_build_query(array('get_confirmation' => true), '', '&')
-                    );
-                } else {
-                    $values = array('fc' => 'module', 'module' => 'paypal', 'controller' => 'confirm',
-                        'get_confirmation' => true);
-                    $this->context->smarty->assign('paypal_confirmation', $shop_url.__PS_BASE_URI__.'?'.http_build_query($values));
-                }
-            }
-        }
     }
 
     public function hookPayment($params)
@@ -133,7 +62,56 @@ class Monri extends PaymentModule
             return;
         }
 
-        return 'payment rendering';
+        $cart = $this->context->cart;
+        $customer = $this->context->customer;
+        $address = new Address($cart->id_address_delivery);
+        $currency = new Currency($cart->id_currency);
+
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+        $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
+        $order_number = $cart->id . "_" . time();
+
+        $prefix = 'monri_';
+
+        $monri_inputs = [
+            $prefix . 'utf8' => '✓',
+            $prefix . 'authenticity_token' => $authenticity_token,
+            $prefix . 'ch_full_name' => "{$customer->firstname} {$customer->lastname}",
+            $prefix . 'ch_address' => $address->address1,
+            $prefix . 'ch_city' => $address->city,
+            $prefix . 'ch_zip' => $address->postcode,
+            $prefix . 'ch_country' => $address->country,
+            $prefix . 'ch_phone' => $address->phone,
+            $prefix . 'ch_email' => $customer->email,
+            $prefix . 'order_info' => "Order {$cart->id}",
+            $prefix . 'order_number' => $order_number,
+            $prefix . 'currency' => $currency->iso_code,
+            $prefix . 'transaction_type' => 'purchase',
+            $prefix . 'number_of_installments' => '',
+            $prefix . 'cc_type_for_installments' => '',
+            $prefix . 'installments_disabled' => 'true',
+            $prefix . 'force_cc_type' => '',
+            $prefix . 'moto' => 'false',
+            $prefix . 'language' => 'en',
+            $prefix . 'tokenize_pan_until' => '',
+            $prefix . 'custom_params' => '{}',
+            $prefix . 'tokenize_pan' => '',
+            $prefix . 'tokenize_pan_offered' => '',
+            $prefix . 'tokenize_brands' => '',
+            $prefix . 'whitelisted_pan_tokens' => '',
+            $prefix . 'custom_attributes' => '',
+        ];
+
+        $action = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
+
+        $this->context->smarty->assign(array(
+            'monri_path' => $this->_path,
+            'action' => $action,
+            'monri_inputs' => $monri_inputs,
+        ));
+
+        return $this->display( __FILE__, 'views/templates/hook/payment.tpl' );
     }
 
     public function hookHeader($params)
@@ -142,7 +120,7 @@ class Monri extends PaymentModule
             return;
         }
 
-        return 'header rendering';
+        return '';
     }
 
     /**
@@ -157,12 +135,10 @@ class Monri extends PaymentModule
 
     public function install()
     {
-
         if (!$this->isPrestaShopSupportedVersion()) {
             $this->_errors[] = $this->l('Sorry, this module is not compatible with your version.');
             return false;
         }
-
 
         return (
             parent::install()
@@ -172,14 +148,6 @@ class Monri extends PaymentModule
             && $this->registerHook( 'DisplayAdminOrder' )
             && $this->registerHook( 'BackOfficeHeader' )
         );
-
-        /*return parent::install()
-            && $this->registerHook('paymentOptions')
-            && $this->registerHook('paymentReturn');*/
-    }
-
-    public function hookBackOfficeHeader() {
-        return 'backoffice header rendering';
     }
 
     /**
@@ -217,6 +185,7 @@ class Monri extends PaymentModule
         if (!$this->active) {
             return null;
         }
+
         return;
     }
 
@@ -232,14 +201,12 @@ class Monri extends PaymentModule
                 }
             }
         }
+
         return false;
     }
 
     public function getExternalPaymentOption($params)
     {
-
-        $externalOption = null;
-        
         if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
             $externalOption = new \PrestaShop\PrestaShop\Core\Payment\PaymentOption();
         } else {
@@ -445,7 +412,7 @@ class Monri extends PaymentModule
             'value' => 'monri',
         ];
 
-//        Correct test?
+        // Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
             ->setAction($form_url)
             ->setInputs($new_inputs);
