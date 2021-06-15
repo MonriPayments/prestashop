@@ -36,6 +36,6 @@ class MonriIframeModuleFrontController extends ModuleFrontController
             'src' => 'http://www.prestashop.com',
         ]);
 
-        $this->setTemplate('module:monri/views/templates/front/iframe.tpl');
+        $this->setTemplate('iframe.tpl');
     }
 }

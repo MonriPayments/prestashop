@@ -66,7 +66,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
         }
 
         if ($checkdigest != $digest && $status == "approved") {
-            $this->setTemplate('module:monri/views/templates/front/error.tpl');
+            $this->setTemplate('error.tpl');
         } else {
             $total = (float)$cart->getOrderTotal(true, \Cart::BOTH);
 
@@ -119,7 +119,7 @@ class MonriSuccessModuleFrontController extends ModuleFrontController
 
             \Tools::redirect(
                 $this->context->link->getPageLink(
-                    'order-confirmation', $this->ssl, null,
+                    'history', $this->ssl, null,
                     'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
                 )
             );

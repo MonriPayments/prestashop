@@ -33,6 +33,7 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         $cart = $this->context->cart;
+
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
@@ -66,9 +67,8 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             'tokenize_pan_offered',
             'tokenize_brands',
             'whitelisted_pan_tokens',
-            'custom_attributes'
+            'custom_attributes',
         ];
-
 
         $inputs = [];
 
@@ -97,12 +97,10 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
         ];
 
-        $this->context->smarty->assign("monri_inputs", $inputs);
-
+        $this->context->smarty->assign('monri_inputs', $inputs);
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
-        return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
-
+        return $this->setTemplate('submit.tpl');
     }
 
     private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
