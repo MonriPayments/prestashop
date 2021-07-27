@@ -245,11 +245,11 @@ class Monri extends PaymentModule
                 'ch_email' => $customer->email,
                 // TODO: bs
                 'language' => 'hr',
-                'custom_attributes' => [
-                    'discounts' => [
-                        'client_manages_discounts' => true
-                    ]
-                ]
+                // 'custom_attributes' => [
+                //     'discounts' => [
+                //         'client_manages_discounts' => true
+                //     ]
+                // ]
             ];
             $paymentResponse = $this->createPayment($data, $merchant_key, $authenticity_token, $base_url);
 
