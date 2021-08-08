@@ -11,7 +11,12 @@ include_once 'classes/MonriUtils.php';
 include_once 'classes/MonriPaymentFee.php';
 include_once 'classes/MonriWebServiceHelper.php';
 include_once 'classes/IMonriDiscount.php';
+include_once 'classes/DiscountRule.php';
+include_once 'classes/BinDiscountRule.php';
+include_once 'classes/DateValidFromToDiscountRule.php';
+include_once 'classes/PriceRuleDiscountRule.php';
 include_once 'classes/MonriCardDiscount.php';
+include_once 'classes/CompositeDiscount.php';
 include_once 'classes/MonriDiscount.php';
 include_once 'classes/AllCardsMonriDiscount.php';
 
@@ -245,11 +250,11 @@ class Monri extends PaymentModule
                 'ch_email' => $customer->email,
                 // TODO: bs
                 'language' => 'hr',
-                // 'custom_attributes' => [
-                //     'discounts' => [
-                //         'client_manages_discounts' => true
-                //     ]
-                // ]
+                 'custom_attributes' => [
+                     'discounts' => [
+                         'client_manages_discounts' => true
+                     ]
+                 ]
             ];
             $paymentResponse = $this->createPayment($data, $merchant_key, $authenticity_token, $base_url);
 

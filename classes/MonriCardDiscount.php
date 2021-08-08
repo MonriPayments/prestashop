@@ -12,7 +12,7 @@ class MonriCardDiscount implements IMonriDiscount {
      * @param $valid_from
      * @param $valid_to
      */
-    public function __construct($discount_percentage, $valid_from, $valid_to)
+    public function __construct($valid_from, $valid_to, $discount_percentage)
     {
         $this->discount_percentage = $discount_percentage;
         $this->valid_from = $valid_from;

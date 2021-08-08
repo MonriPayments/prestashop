@@ -68,12 +68,21 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 2. fetch special prices
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
+            $card_data = isset($_POST['card_data']) ? $_POST['card_data'] : [];
             foreach ($products as $product) {
-                $discount_result = self::getSpecialPriceDiscount($product, [
-                    new MonriDiscount(isset($_POST['card_data']) ? $_POST['card_data'] : []),
+                $discount_result = self::getSpecialPriceDiscount($product, $card_data, [
+                    new CompositeDiscount(0.25, "
+                    Popust u ukupnom procentu od 25%% odobravamo na kompletan asortiman za klijente Sparkasse banke na web shopu uz jednokratno plaćanje Sparskasse Shop & Fun karticama.
+                    Akcija traje do isteka sredstava predviđenih za popuste.
+                    Popuste nije moguće sabirati. Za sve dodatne informacije možete nas kontaktirati na besplatni info broj 0800 22338
+                    ", [
+                        new DateValidFromToDiscountRule('2021-07-27', '2021-12-31'),
+                        new BinDiscountRule(["545988"])
+                    ]),
+                    new MonriDiscount($card_data),
                     // new AllCardsMonriDiscount('2021-04-08 16:00:00', '2021-04-08 23:59:59', 0.235),
-                    // new AllCardsMonriDiscount('2021-03-02', '2024-03-01', 0.10),
-                    new AllCardsMonriDiscount('2021-07-27', '2021-08-29', 0.19)
+                    new MonriCardDiscount('2021-07-27', '2021-08-29', 0.19),
+                    new AllCardsMonriDiscount('2021-03-02', '2024-03-01', 0.10)
                 ]);
                 $discount = $discount_result['discount_percentage'];
                 $mpc = self::getPriceForDiscount($product) * $product['quantity'];
@@ -122,7 +131,12 @@ class MonriPriceModuleFrontController extends ModuleFrontController
     /** @noinspection PhpUnused */
     public function displayAjaxPrice()
     {
-        $this->calculatePrice(false);
+        try {
+            $this->calculatePrice(false);
+        } catch (Exception $exception) {
+            var_dump($exception);
+            die("An error has occurred");
+        }
     }
 
     /**
@@ -130,7 +144,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
      * @param $discount_rules
      * @return array
      */
-    static function getSpecialPriceDiscount($product, $discount_rules)
+    static function getSpecialPriceDiscount($product, $card_data, $discount_rules)
     {
         $product_id = $product['id_product'];
         // get all special prices
@@ -142,7 +156,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
              * @var $rule IMonriDiscount
              */
 
-            if (!$rule->isEligible([], $product, $specific_prices)) {
+            if (!$rule->isEligible(['card_data' => $card_data], $product, $specific_prices)) {
                 continue;
             }
 
