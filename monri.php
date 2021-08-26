@@ -22,6 +22,8 @@ class Monri extends PaymentModule
     protected $_html = '';
     protected $_postErrors = array();
 
+    private $paymentLabelText = 'Pay using Monri - Kartično plaćanje';
+
     public $details;
     public $owner;
     public $address;
@@ -109,6 +111,7 @@ class Monri extends PaymentModule
             'monri_path' => $this->_path,
             'action' => $action,
             'monri_inputs' => $monri_inputs,
+            'payment_text' => $this->l($this->paymentLabelText),
         ));
 
         return $this->display( __FILE__, 'views/templates/hook/payment.tpl' );
@@ -413,7 +416,7 @@ class Monri extends PaymentModule
         ];
 
         // Correct test?
-        $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
+        $externalOption->setCallToActionText($this->l($this->paymentLabelText))
             ->setAction($form_url)
             ->setInputs($new_inputs);
 
