@@ -28,7 +28,7 @@
                         </ul>
                     </span>
                 <small style="font-size: 12px; display: block; font-weight: normal; letter-spacing: 1px;">
-                    {l s={'Pay using Monri - Kartično plaćanje'} mod='monri'}
+                    {$payment_text}
                 </small>
             </div>
         </div>
