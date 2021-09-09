@@ -30,6 +30,8 @@
 class MonriPriceModuleFrontController extends ModuleFrontController
 {
     /** @noinspection PhpUnused */
+    const DEFAULT_DISCOUNT = 0.10;
+
     public function initContent()
     {
         $this->ajax = true;
@@ -79,11 +81,10 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                         new DateValidFromToDiscountRule('2021-07-27', '2021-12-31'),
                         new BinDiscountRule(["545988"])
                     ]),
-                    new MonriDiscount($card_data),
-                    // new AllCardsMonriDiscount('2021-04-08 16:00:00', '2021-04-08 23:59:59', 0.235),
-                    new MonriCardDiscount('2021-07-27', '2021-08-29', 0.19),
-                    new AllCardsMonriDiscount('2021-03-02', '2024-03-01', 0.10)
+                    new MonriDiscount($card_data, 'UCB', self::DEFAULT_DISCOUNT),
+                    new AllCardsMonriDiscount('2021-03-02', '2024-03-01', self::DEFAULT_DISCOUNT)
                 ]);
+
                 $discount = $discount_result['discount_percentage'];
                 $mpc = self::getPriceForDiscount($product) * $product['quantity'];
                 $mpc_with_discount = $mpc * (1 - $discount);

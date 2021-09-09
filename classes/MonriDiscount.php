@@ -5,21 +5,27 @@ class MonriDiscount implements IMonriDiscount
     private $monriDiscountPercentage;
     private $cardData;
     private $specific_price_rule;
+    private $price_rule_name;
+    private $default_discount;
 
     /**
      * MonriDiscount constructor.
      * @param $cardData
+     * @param $price_rule_name
+     * @param $default_discount
      */
-    public function __construct($cardData)
+    public function __construct($cardData, $price_rule_name, $default_discount)
     {
         $this->cardData = $cardData;
         $this->monriDiscountPercentage = 0;
+        $this->price_rule_name = $price_rule_name;
+        $this->default_discount = $default_discount;
     }
 
     function discountPercentage($request, $product)
     {
         if ($this->specific_price_rule == null) {
-            return 0;
+            return $this->default_discount;
         }
 
         return $this->monriDiscountPercentage;
@@ -45,7 +51,7 @@ class MonriDiscount implements IMonriDiscount
         $this->specific_price_rule = null;
 
         foreach ($specificPrices as $specificPrice) {
-            $this->specific_price_rule = MonriWebServiceHelper::getSpecificPriceRule($specificPrice['id_specific_price_rule'], 'UCB');
+            $this->specific_price_rule = MonriWebServiceHelper::getSpecificPriceRule($specificPrice['id_specific_price_rule'], $this->price_rule_name);
             if ($this->specific_price_rule == null) {
                 continue;
             } else {
