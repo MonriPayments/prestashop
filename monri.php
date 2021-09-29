@@ -45,7 +45,7 @@ class Monri extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = ['validation', 'success', 'cancel', 'submit'];
+        $this->controllers = ['validation', 'success', 'cancel', 'submit', 'callback'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
