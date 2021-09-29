@@ -97,6 +97,30 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
         ];
 
+        if($success_url_override = Configuration::get(MonriConstants::KEY_SUCCESS_URL_OVERRIDE)) {
+            $inputs['success_url_override'] = [
+                'name' => 'success_url_override',
+                'type' => 'hidden',
+                'value' => $success_url_override,
+            ];
+        }
+
+        if($cancel_url_override = Configuration::get(MonriConstants::KEY_CANCEL_URL_OVERRIDE)) {
+            $inputs['cancel_url_override'] = [
+                'name' => 'cancel_url_override',
+                'type' => 'hidden',
+                'value' => $cancel_url_override,
+            ];
+        }
+
+        if($callback_url_override = Configuration::get(MonriConstants::KEY_CALLBACK_URL_OVERRIDE)) {
+            $inputs['callback_url_override'] = [
+                'name' => 'callback_url_override',
+                'type' => 'hidden',
+                'value' => $callback_url_override,
+            ];
+        }
+
         $this->context->smarty->assign('monri_inputs', $inputs);
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
