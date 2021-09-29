@@ -16,6 +16,11 @@ class MonriConstants
     const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
     const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
+
+    const KEY_SUCCESS_URL_OVERRIDE = 'KEY_SUCCESS_URL_OVERRIDE';
+    const KEY_CANCEL_URL_OVERRIDE = 'KEY_CANCEL_URL_OVERRIDE';
+    const KEY_CALLBACK_URL_OVERRIDE = 'KEY_CALLBACK_URL_OVERRIDE';
+
     const KEY_MIN_INSTALLMENTS = 'KEY_MIN_INSTALLMENTS';
     const KEY_MAX_INSTALLMENTS = 'KEY_MAX_INSTALLMENTS';
 }
@@ -333,6 +338,30 @@ class Monri extends PaymentModule
                 ]
         ];
 
+        if($success_url_override = Configuration::get(MonriConstants::KEY_SUCCESS_URL_OVERRIDE)) {
+            $inputs['success_url_override'] = [
+                'name' => 'success_url_override',
+                'type' => 'hidden',
+                'value' => $success_url_override,
+            ];
+        }
+
+        if($cancel_url_override = Configuration::get(MonriConstants::KEY_CANCEL_URL_OVERRIDE)) {
+            $inputs['cancel_url_override'] = [
+                'name' => 'cancel_url_override',
+                'type' => 'hidden',
+                'value' => $cancel_url_override,
+            ];
+        }
+
+        if($callback_url_override = Configuration::get(MonriConstants::KEY_CALLBACK_URL_OVERRIDE)) {
+            $inputs['callback_url_override'] = [
+                'name' => 'callback_url_override',
+                'type' => 'hidden',
+                'value' => $callback_url_override,
+            ];
+        }
+
         $new_inputs = [];
         foreach ($inputs as $k => $v) {
             $new_inputs["monri_$k"] = [
@@ -362,6 +391,10 @@ class Monri extends PaymentModule
             $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST,
             $mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
         ];
+
+        Configuration::updateValue(MonriConstants::KEY_SUCCESS_URL_OVERRIDE, (string)Tools::getValue(MonriConstants::KEY_SUCCESS_URL_OVERRIDE));
+        Configuration::updateValue(MonriConstants::KEY_CANCEL_URL_OVERRIDE, (string)Tools::getValue(MonriConstants::KEY_CANCEL_URL_OVERRIDE));
+        Configuration::updateValue(MonriConstants::KEY_CALLBACK_URL_OVERRIDE, (string)Tools::getValue(MonriConstants::KEY_CALLBACK_URL_OVERRIDE));
 
         foreach ($update_keys as $key) {
             Configuration::updateValue($key, (string)Tools::getValue($key));
@@ -490,7 +523,32 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => false,
                     'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
-                ]
+                ],
+                // OVERRIDES
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Success URL override'),
+                    'name' => MonriConstants::KEY_SUCCESS_URL_OVERRIDE,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('Override success URL directly, use HTTPS for this functionality.')
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Cancel URL override'),
+                    'name' => MonriConstants::KEY_CANCEL_URL_OVERRIDE,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('Override cancel URL directly, use HTTPS for this functionality.')
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Callback URL override'),
+                    'name' => MonriConstants::KEY_CALLBACK_URL_OVERRIDE,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('Override callback URL directly, use HTTPS for this functionality.')
+                ],
             ],
             'submit' => array(
                 'title' => $this->l('Save'),
@@ -535,6 +593,10 @@ class Monri extends PaymentModule
 
             $merchant_key_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_KEY_TEST);
             $merchant_authenticity_token_test = (string)Tools::getValue(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+
+            $merchant_success_url_override = (string)Tools::getValue(MonriConstants::KEY_SUCCESS_URL_OVERRIDE);
+            $merchant_cancel_url_override = (string)Tools::getValue(MonriConstants::KEY_CANCEL_URL_OVERRIDE);
+            $merchant_callback_url_override = (string)Tools::getValue(MonriConstants::KEY_CALLBACK_URL_OVERRIDE);
         } else {
             $merchant_key_live = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_PROD);
             $merchant_authenticity_token_live = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
@@ -543,6 +605,10 @@ class Monri extends PaymentModule
 
             $merchant_key_test = Configuration::get(MonriConstants::KEY_MERCHANT_KEY_TEST);
             $merchant_authenticity_token_test = Configuration::get(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
+
+            $merchant_success_url_override = Configuration::get(MonriConstants::KEY_SUCCESS_URL_OVERRIDE);
+            $merchant_cancel_url_override = Configuration::get(MonriConstants::KEY_CANCEL_URL_OVERRIDE);
+            $merchant_callback_url_override = Configuration::get(MonriConstants::KEY_CALLBACK_URL_OVERRIDE);
         }
 
         // Load current value
@@ -552,6 +618,10 @@ class Monri extends PaymentModule
         $helper->fields_value[MonriConstants::KEY_MERCHANT_KEY_TEST] = $merchant_key_test;
         $helper->fields_value[MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST] = $merchant_authenticity_token_test;
         $helper->fields_value[MonriConstants::KEY_MODE] = $mode;
+
+        $helper->fields_value[MonriConstants::KEY_SUCCESS_URL_OVERRIDE] = $merchant_success_url_override;
+        $helper->fields_value[MonriConstants::KEY_CANCEL_URL_OVERRIDE] = $merchant_cancel_url_override;
+        $helper->fields_value[MonriConstants::KEY_CALLBACK_URL_OVERRIDE] = $merchant_callback_url_override;
 
         return $helper->generateForm($fields_form);
     }
