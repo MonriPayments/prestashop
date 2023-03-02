@@ -76,8 +76,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             foreach ($products as $product) {
                 $discount_result = self::getSpecialPriceDiscount($product, $card_data, [
                     new CompositeDiscount(0.20, "
-                     Izvršite plaćanje Vašom Unicredit karticom i ostvarite 20% ukupnog popusta za kupovinu određenog
-                     asortimana na WEBshopu i u poslovnicama Imteca do 30.9.2022. Više informacija na besplatni info broj 0800 223 38!
+                     Svakog petka u godini štedite 20% prilikom kupovine koju obavite sa BBI MASTERCARD I VISA KARTICAMA. Cijena se odnosi na plaćanje putem webshopa i u IMTEC poslovnicama!
                      ", [
                         new DateValidFromToDiscountRule('2023-02-20', '2024-02-20'),
                         new BinDiscountRule(["540057", "517267", "529784", "406970", "428172", "428173", "406971"]),
