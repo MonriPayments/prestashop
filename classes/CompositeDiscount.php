@@ -24,7 +24,25 @@ class CompositeDiscount implements IMonriDiscount
         return $this->discountPercentage;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible_new($request, $product, $specificPrices, $order_total)
+    {
+        if (count($this->rules) == 0) {
+            return ['message' => 'Zero rules'];
+        }
+
+        foreach ($this->rules as $rule) {
+            if ($rule instanceof DiscountRule) {
+                $eligible = $rule->isEligible($request, $product, $specificPrices, $order_total);
+                if (!$eligible) {
+                    return ['message' => 'rule not eligible', 'class' => get_class($rule), 'specificPrices' => $specificPrices, 'product' => $product];
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         if (count($this->rules) == 0) {
             return false;
@@ -32,7 +50,7 @@ class CompositeDiscount implements IMonriDiscount
 
         foreach ($this->rules as $rule) {
             if ($rule instanceof DiscountRule) {
-                $eligible = $rule->isEligible($request, $product, $specificPrices);
+                $eligible = $rule->isEligible($request, $product, $specificPrices, $order_total);
                 if (!$eligible) {
                     return false;
                 }

@@ -27,7 +27,7 @@ class MonriCardDiscount implements IMonriDiscount {
         return 0;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         $active = MonriUtils::isDateBetween($this->valid_from, $this->valid_to);
 

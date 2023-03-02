@@ -13,8 +13,17 @@ class PriceRuleDiscountRule implements DiscountRule
         $this->price_rule_name = $price_rule_name;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
-        // TODO: Implement isEligible() method.
+        foreach ($specificPrices as $specificPrice) {
+            $specific_price_rule = MonriWebServiceHelper::getSpecificPriceRule($specificPrice['id_specific_price_rule'], $this->price_rule_name);
+            if ($specific_price_rule == null) {
+                continue;
+            } else {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

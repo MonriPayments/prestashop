@@ -25,7 +25,7 @@ class AllCardsMonriDiscount implements IMonriDiscount
         return $this->discount;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         return MonriUtils::isDateBetween($this->from, $this->to);
     }

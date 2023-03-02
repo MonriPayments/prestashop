@@ -27,4 +27,9 @@ class MonriUtils {
             return false;
         }
     }
+
+    static function isTodayWeekDay($day) {
+        $currentDate = new DateTime("now", new DateTimeZone("Europe/Sarajevo"));
+        return $currentDate->format('N') == $day;
+    }
 }

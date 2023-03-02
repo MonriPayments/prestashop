@@ -31,7 +31,7 @@ class MonriDiscount implements IMonriDiscount
         return $this->monriDiscountPercentage;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         $has_monri_discount = isset($this->cardData['discount']);
 

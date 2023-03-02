@@ -71,19 +71,20 @@ class MonriPriceModuleFrontController extends ModuleFrontController
             // 3. disable discount if it's for payment method
             // 4. apply discount for product if it has monri discount enabled
             $card_data = isset($_POST['card_data']) ? $_POST['card_data'] : [];
+            $taxConfiguration = new TaxConfiguration();
+            $order_total = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes());
             foreach ($products as $product) {
                 $discount_result = self::getSpecialPriceDiscount($product, $card_data, [
-                    new CompositeDiscount(0.25, "
-                    Popust u ukupnom procentu od 25%% odobravamo na kompletan asortiman za klijente Sparkasse banke na web shopu uz jednokratno plaćanje Sparskasse Shop & Fun karticama.
-                    Akcija traje do isteka sredstava predviđenih za popuste.
-                    Popuste nije moguće sabirati. Za sve dodatne informacije možete nas kontaktirati na besplatni info broj 0800 22338
-                    ", [
-                        new DateValidFromToDiscountRule('2021-07-27', '2021-12-31'),
-                        new BinDiscountRule(["545988"])
+                    new CompositeDiscount(0.20, "
+                     Izvršite plaćanje Vašom Unicredit karticom i ostvarite 20% ukupnog popusta za kupovinu određenog
+                     asortimana na WEBshopu i u poslovnicama Imteca do 30.9.2022. Više informacija na besplatni info broj 0800 223 38!
+                     ", [
+                        new DateValidFromToDiscountRule('2023-02-20', '2024-02-20'),
+                        new BinDiscountRule(["540057", "517267", "529784", "406970", "428172", "428173", "406971"]),
+                        new WeekDayDiscountRule(5)
                     ]),
-                    new MonriDiscount($card_data, 'UCB', self::DEFAULT_DISCOUNT),
-                    new AllCardsMonriDiscount('2021-03-02', '2024-03-01', self::DEFAULT_DISCOUNT)
-                ]);
+                    new AllCardsMonriDiscount('2021-10-01', '2024-03-01', self::DEFAULT_DISCOUNT)
+                ], $order_total);
 
                 $discount = $discount_result['discount_percentage'];
                 $mpc = self::getPriceForDiscount($product) * $product['quantity'];
@@ -101,27 +102,31 @@ class MonriPriceModuleFrontController extends ModuleFrontController
                 $total_price_with_discounts = $total_price_with_discounts + $mpc_with_discount;
             }
 
-            $taxConfiguration = new TaxConfiguration();
+
             $total_price_with_discounts = $total_price_with_discounts + $cart->getPackageShippingCost();
             $discount_amount = $this->context->cart->getOrderTotal($taxConfiguration->includeTaxes()) - $total_price_with_discounts;
+            $updated_payment = ['status' => 'Not updated'];
             if ($updatePrice) {
                 if ($discount_amount > 0) {
                     Monri::addCartRule('monri_special_discount', 'Specijalni popust', $this->context, $discount_amount);
-                    Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
                 } else {
                     Monri::disableCartRule('monri_special_discount', $this->context);
                 }
                 // update amount
+                $updated_payment = Monri::updatePayment($client_secret, intval(($total_price_with_discounts * 100)));
             }
 
             $rv = [
                 'total_price_with_discounts' => $total_price_with_discounts,
                 'amount' => Tools::displayPrice($total_price_with_discounts),
                 'discount_amount' => $discount_amount,
-                'custom_params_products' => $custom_params_products
+                'custom_params_products' => $custom_params_products,
+                'updated_payment' => $updated_payment,
+                'update_price' => $updatePrice,
             ];
+
             die(Tools::jsonEncode($rv));
-        } catch (Exception $exception) {
+        } catch (Throwable $exception) {
             die(Tools::jsonEncode(['error' => $exception,
                 'trace' => $exception->getTraceAsString(),
 //                'total_price_with_discounts' => $total_price_with_discounts
@@ -145,7 +150,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
      * @param $discount_rules
      * @return array
      */
-    static function getSpecialPriceDiscount($product, $card_data, $discount_rules)
+    static function getSpecialPriceDiscount($product, $card_data, $discount_rules, $order_total)
     {
         $product_id = $product['id_product'];
         // get all special prices
@@ -157,7 +162,7 @@ class MonriPriceModuleFrontController extends ModuleFrontController
              * @var $rule IMonriDiscount
              */
 
-            if (!$rule->isEligible(['card_data' => $card_data], $product, $specific_prices)) {
+            if (!$rule->isEligible(['card_data' => $card_data], $product, $specific_prices, $order_total)) {
                 continue;
             }
 

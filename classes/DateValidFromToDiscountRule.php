@@ -17,7 +17,7 @@ class DateValidFromToDiscountRule implements DiscountRule
     }
 
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         return MonriUtils::isDateBetween($this->valid_from, $this->valid_to);
     }

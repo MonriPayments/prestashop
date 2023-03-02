@@ -15,7 +15,7 @@ class BinDiscountRule implements DiscountRule
         $this->bins = $bins;
     }
 
-    function isEligible($request, $product, $specificPrices)
+    function isEligible($request, $product, $specificPrices, $order_total)
     {
         $has_bin = isset($request['card_data']['bin']);
 

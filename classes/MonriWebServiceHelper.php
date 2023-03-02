@@ -32,6 +32,21 @@ class MonriWebServiceHelper
         return $special_prices;
     }
 
+    public static function getSpecificPriceRuleRaw($id)
+    {
+        if (!$id) {
+            return null;
+        }
+
+        $rv = self::webServiceGetJson("/api/specific_price_rules/$id?output_format=JSON");
+        if (isset($rv['response']['specific_price_rule'])) {
+            $specific_price_rule = $rv['response']['specific_price_rule'];
+            return $specific_price_rule;
+        } else {
+            return null;
+        }
+    }
+
     public static function getSpecificPriceRule($id, $name)
     {
         if (!$id) {

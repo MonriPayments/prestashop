@@ -14,9 +14,10 @@ interface IMonriDiscount {
      * @param $request
      * @param $product
      * @param $specificPrices
+     * @param $order_total
      * @return boolean
      */
-    function isEligible($request, $product, $specificPrices);
+    function isEligible($request, $product, $specificPrices, $order_total);
 
     /**
      * A message used to show on client side

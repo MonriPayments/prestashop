@@ -15,6 +15,8 @@ include_once 'classes/DiscountRule.php';
 include_once 'classes/BinDiscountRule.php';
 include_once 'classes/DateValidFromToDiscountRule.php';
 include_once 'classes/PriceRuleDiscountRule.php';
+include_once 'classes/PriceMinMaxDiscountRule.php';
+include_once 'classes/WeekDayDiscountRule.php';
 include_once 'classes/MonriCardDiscount.php';
 include_once 'classes/CompositeDiscount.php';
 include_once 'classes/MonriDiscount.php';
