@@ -45,7 +45,7 @@ class Monri extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = ['validation', 'success', 'cancel', 'submit'];
+        $this->controllers = ['validation', 'success', 'cancel', 'monriWebPaySubmit'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
@@ -165,7 +165,9 @@ class Monri extends PaymentModule
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
-        $form_url = $this->context->link->getModuleLink($this->name, 'submit', array(), true);
+        $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', array(), true);
+	    $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', array(), true);
+	    $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', array(), true);
 
         $address = new Address($cart->id_address_delivery);
 
@@ -330,7 +332,19 @@ class Monri extends PaymentModule
                     'name' => 'custom_attributes',
                     'type' => 'hidden',
                     'value' => '',
-                ]
+                ],
+            'success_url_override' =>
+	            [
+		            'name' => 'success_url_override',
+		            'type' => 'hidden',
+		            'value' => $success_url,
+	            ],
+            'cancel_url_override' =>
+	            [
+		            'name' => 'cancel_url_override',
+		            'type' => 'hidden',
+		            'value' => $cancel_url,
+	            ],
         ];
 
         $new_inputs = [];
