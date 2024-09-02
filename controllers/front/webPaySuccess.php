@@ -40,7 +40,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 		$url_parsed = parse_url(preg_replace('/&digest=[^&]*/', '', $full_url));
 		$port = isset($url_parsed['port']) ? $url_parsed['port'] : '';
 		$calculated_url = $url_parsed['scheme'] . '://' . $url_parsed['host'] . ($port == '' ? '' : ":" . $port) . $url_parsed['path'] . '?' . $url_parsed['query'];
-		$merchant_key = Monri::getMerchantKey();
+		$merchant_key = Monri::getMonriWebPayMerchantKey();
 		$checkdigest = hash('sha512', $merchant_key . $calculated_url);
 		$parts = explode('_', $_GET['order_number'], 2);
 		$cart = new Cart($parts[0]);
@@ -127,21 +127,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 	}
 
 	private function applyDiscount($cart, $amount, $original_amount) {
-
-		$inspect = [
-			'card' => $cart,
-			'check_digest' => $checkdigest,
-			'digest' => $digest,
-			'same_digest' => $checkdigest == $digest,
-			'full_url' => $full_url,
-			'url' => $url,
-			'port' => $_SERVER['SERVER_PORT'],
-			'server_name' => $_SERVER['SERVER_NAME'],
-			'request_uri' => $_SERVER['REQUEST_URI'],
-			'calculated_url' => $calculated_url,
-			'self' => $_SERVER['PHP_SELF'],
-			'url_parsed' => $url_parsed
-		];
 
 		$cart_rule = new CartRule();
 		$language_ids = LanguageCore::getIDs(false);

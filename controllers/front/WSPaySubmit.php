@@ -25,7 +25,7 @@
 */
 
 
-class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
+class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
 {
 	/**
 	 * @see FrontController::postProcess()
@@ -34,41 +34,29 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 	{
 		$cart = $this->context->cart;
 		$mode = Configuration::get(MonriConstants::KEY_MODE);
-		$merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_MERCHANT_KEY_PROD : MonriConstants::MONRI_MERCHANT_KEY_TEST);
+		$secret_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
 		$amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-		$form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+		$form_url = $mode == MonriConstants::MODE_PROD ? 'https://form.wspay.biz/authorization.aspx' : 'https://formtest.wspay.biz/authorization.aspx';
 
 		$prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
 
 		$from_post = [
-			'utf8',
-			'authenticity_token',
-			'ch_full_name',
-			'ch_address',
-			'ch_city',
-			'ch_zip',
-			'ch_country',
-			'ch_phone',
-			'ch_email',
-			'order_info',
-			'order_number',
-			'currency',
-			'transaction_type',
-			'number_of_installments',
-			'cc_type_for_installments',
-			'installments_disabled',
-			'force_cc_type',
-			'moto',
-			'language',
-			'tokenize_pan_until',
-			'custom_params',
-			'tokenize_pan',
-			'tokenize_pan_offered',
-			'tokenize_brands',
-			'whitelisted_pan_tokens',
-			'custom_attributes',
-			'success_url_override',
-			'cancel_url_override'
+			'Version',
+			'ShopID',
+			'ShoppingCartID',
+			'Lang',
+			'TotalAmount',
+			'ReturnUrl',
+			'CancelUrl',
+			'ReturnErrorURL',
+			'CustomerFirstName',
+			'CustomerLastName',
+			'CustomerAddress',
+			'CustomerCity',
+			'CustomerZIP',
+			'CustomerCountry',
+			'CustomerPhone',
+			'CustomerEmail',
 		];
 
 
@@ -82,36 +70,32 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 			];
 		}
 
-//        echo '<pre>' . var_export($inputs, true) . '</pre>';
-//        die();
+		$cart_id = $inputs['ShoppingCartID']['value'];
+		$shop_id = $inputs['ShopID']['value'];
 
-		$inputs['amount'] = [
-			'name' => 'amount',
+		$inputs['Signature'] = [
+			'name' => 'Signature',
 			'type' => 'hidden',
-			'value' => $amount
-		];
-
-		$order_number = $inputs['order_number']['value'];
-
-		$inputs['digest'] = [
-			'name' => 'digest',
-			'type' => 'hidden',
-			'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
+			'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
 		];
 
 		$this->context->smarty->assign("monri_inputs", $inputs);
 
-		$this->context->smarty->assign('action', "$form_url/v2/form");
+		$this->context->smarty->assign('action', $form_url);
 
 		return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
 
 	}
 
-	private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
+	private function generateSignature($cart_id, $formatted_amount, $shop_id, $secret_key)
 	{
-//        $d = $merchant_key . $order_number . $amount . $currency;
-//        var_dump($d);
-//        die();
-		return hash('sha512', $merchant_key . $order_number . $amount . $currency);
+		$clean_total_amount = str_replace(',', '', $formatted_amount);
+		$signature =
+			$shop_id . $secret_key .
+			$cart_id . $secret_key .
+			$clean_total_amount . $secret_key;
+
+		$signature = hash('sha512', $signature);
+		return $signature;
 	}
 }
