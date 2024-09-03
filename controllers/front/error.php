@@ -24,15 +24,16 @@
 *  International Registered Trademark & Property of PrestaShop SA
 */
 
-class MonriErrorModuleFrontController extends ModuleFrontController {
-	/**
-	 * @see FrontController::postProcess()
-	 */
-	public function postProcess()
-	{
-		PrestaShopLogger::addLog("Response data: " . ( print_r( $_GET, true ) ));
-		$this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
-		$this->context->smarty->assign('error_codes', Tools::getValue('ErrorCodes'));
-		$this->setTemplate('module:monri/views/templates/front/error.tpl');
-	}
+class MonriErrorModuleFrontController extends ModuleFrontController
+{
+    /**
+     * @see FrontController::postProcess()
+     */
+    public function postProcess()
+    {
+        PrestaShopLogger::addLog("Response data: " . ( print_r($_GET, true) ));
+        $this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
+        $this->context->smarty->assign('error_codes', Tools::getValue('ErrorCodes'));
+        $this->setTemplate('module:monri/views/templates/front/error.tpl');
+    }
 }
