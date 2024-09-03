@@ -113,11 +113,12 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $currency_id = $cart->id_currency;
             $customer = new \Customer($cart->id_customer);
             $amount = (float) str_replace(",", ".", Tools::getValue('Amount'));
+			$id_order_state = Monri::getMonriTransactionStateId();
 
             // Presta shop creates order only on success redirect
             $this->module->validateOrder(
                 $cart->id,
-                2,
+	            $id_order_state,
                 $amount,
                 $this->module->displayName,
                 null,

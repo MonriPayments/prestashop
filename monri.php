@@ -12,6 +12,9 @@ class MonriConstants
     const MODE_PROD = 'prod';
     const MODE_TEST = 'test';
 
+	const TRANSACTION_TYPE_AUTHORIZE = 'authorize';
+	const TRANSACTION_TYPE_CAPTURE = 'capture';
+	const TRANSACTION_TYPE = 'TRANSACTION_TYPE';
     const PAYMENT_GATEWAY_SERVICE_TYPE = 'PAYMENT_GATEWAY_SERVICE_TYPE';
 
     const PAYMENT_TYPE_MONRI_WEBPAY = 'monri_webpay';
@@ -601,6 +604,7 @@ class Monri extends PaymentModule
             // get post values
             $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
             $payment_type = (string)Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
+			$transaction_type = (string)Tools::getValue(MonriConstants::TRANSACTION_TYPE);
 
             if ($mode != MonriConstants::MODE_PROD && $mode != MonriConstants::MODE_TEST) {
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
@@ -613,6 +617,7 @@ class Monri extends PaymentModule
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
                     Configuration::updateValue(MonriConstants::KEY_MODE, $mode);
                     Configuration::updateValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE, $payment_type);
+	                Configuration::updateValue(MonriConstants::TRANSACTION_TYPE, $transaction_type);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
                     $output .= $test_validate . $live_validate;
@@ -710,6 +715,26 @@ class Monri extends PaymentModule
                 ],
                 'required' => true
                 ],
+	            [
+		            'type' => 'radio',
+		            'label' => $this->l('Transaction type'),
+		            'name' => MonriConstants::TRANSACTION_TYPE,
+		            'class' => 't',
+		            'values' => [
+			            [
+				            'id' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
+				            'value' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
+				            'label' => $this->l('Authorize')
+			            ],
+			            [
+				            'id' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
+				            'value' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
+				            'label' => $this->l('Capture')
+			            ]
+		            ],
+		            'required' => true,
+		            'hint' => $this->l('Needs to be agreed with Monri WSPay')
+	            ],
                 [
                 'type' => 'text',
                 'label' => $this->l('Secret key for Monri WSPay Test'),
@@ -793,6 +818,7 @@ class Monri extends PaymentModule
             $payment_gateway_service_type = (string)Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
             $monri_wspay_shop_id_test = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
             $monri_wspay_shop_id_prod = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_PROD);
+			$transaction_type = (string)Tools::getValue(MonriConstants::TRANSACTION_TYPE);
 
         } else {
             $merchant_key_live = Configuration::get(MonriConstants::MONRI_MERCHANT_KEY_PROD);
@@ -807,6 +833,7 @@ class Monri extends PaymentModule
             $payment_gateway_service_type = Configuration::get(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
             $monri_wspay_shop_id_test = Configuration::get(MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
             $monri_wspay_shop_id_prod = Configuration::get(MonriConstants::MONRI_WSPAY_SHOP_ID_PROD);
+	        $transaction_type = Configuration::get(MonriConstants::TRANSACTION_TYPE);
         }
 
         // Load current value
@@ -821,6 +848,7 @@ class Monri extends PaymentModule
         $helper->fields_value[MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE] = $payment_gateway_service_type;
         $helper->fields_value[MonriConstants::MONRI_WSPAY_SHOP_ID_TEST] = $monri_wspay_shop_id_test;
         $helper->fields_value[MonriConstants::MONRI_WSPAY_SHOP_ID_PROD] = $monri_wspay_shop_id_prod;
+	    $helper->fields_value[MonriConstants::TRANSACTION_TYPE] = $transaction_type;
 
         return $helper->generateForm($fields_form);
     }
@@ -842,7 +870,8 @@ class Monri extends PaymentModule
             MonriConstants::MONRI_WSPAY_SHOP_ID_TEST,
             MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST,
             MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD,
-            MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE
+            MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE,
+	        MonriConstants::TRANSACTION_TYPE
         ];
 
         $db = Db::getInstance();
@@ -863,4 +892,9 @@ class Monri extends PaymentModule
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
     }
+
+	public static function getMonriTransactionStateId() {
+		// 2 is for capture while 17 is for authorize
+		return (Configuration::get(MonriConstants::TRANSACTION_TYPE) === 'capture') ? 2 : 17;
+	}
 }
