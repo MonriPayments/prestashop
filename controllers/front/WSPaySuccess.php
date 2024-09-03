@@ -39,6 +39,12 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 			$approval_code = ! empty( $_GET['ApprovalCode'] ) ? $_GET['ApprovalCode'] : '';
 			$trx_authorized = ( $success === '1' ) && ! empty( $approval_code );
 
+			if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+				PrestaShopLogger::addLog('Invalid payment option or invalid context.');
+				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				return;
+			}
+
 			if ( ! isset( $_GET['ShoppingCartID'] ) ) {
 				PrestaShopLogger::addLog('Shopping cart ID is missing.');
 				$this->setTemplate('module:monri/views/templates/front/error.tpl');
@@ -52,7 +58,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 				return;
 			}
 
-			if ( !$this->validate_return() || !$trx_authorized ) {
+			if ( !$this->validateReturn() || !$trx_authorized ) {
 				PrestaShopLogger::addLog('Failed to validate response.');
 				$this->setTemplate('module:monri/views/templates/front/error.tpl');
 				return;
@@ -100,8 +106,8 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 				}
 			}
 
-			if (isset($extra_vars['ShoppingCartID'])) {
-				$extra_vars['transaction_id'] = $extra_vars['ShoppingCartID'];
+			if (isset($extra_vars['WsPayOrderId'])) {
+				$extra_vars['transaction_id'] = $extra_vars['WsPayOrderId'];
 			}
 
 			$currencyId = $cart->id_currency;
@@ -128,8 +134,12 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 		}
 
 	}
-
-	private function validate_return() {
+	/**
+	 * Check if WSPay response is valid
+	 *
+	 * @return bool
+	 */
+	private function validateReturn() {
 
 		if ( ! isset( $_GET['ShoppingCartID'], $_GET['Signature'] ) ) {
 			return false;
@@ -158,5 +168,41 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 		$check_digest = hash( 'sha512', implode( '', $digest_parts ) );
 
 		return hash_equals( $check_digest, $digest );
+	}
+
+	/**
+	 * Check if the context is valid
+	 *
+	 * @return bool
+	 */
+	private function checkIfContextIsValid()
+	{
+		return true === Validate::isLoadedObject($this->context->cart)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_customer)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_address_delivery)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_address_invoice);
+	}
+
+	/**
+	 * Check that this payment option is still available in case the customer changed
+	 * his address just before the end of the checkout process
+	 *
+	 * @return bool
+	 */
+	private function checkIfPaymentOptionIsAvailable()
+	{
+		$modules = Module::getPaymentModules();
+
+		if (empty($modules)) {
+			return false;
+		}
+
+		foreach ($modules as $module) {
+			if (isset($module['name']) && $this->module->name === $module['name']) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

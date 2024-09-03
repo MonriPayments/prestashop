@@ -113,10 +113,15 @@ class Monri extends PaymentModule
         }
 	    $payment_service_type = Configuration::get(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
 
-        $payment_options = [
-			$payment_service_type === MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ?
-				$this->getMonriWebPayExternalPaymentOption($params) : $this->getMonriWSPayExternalPaymentOption($params),
-        ];
+		$payment_options = [];
+		switch ($payment_service_type) {
+			case MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY:
+				$payment_options[] = $this->getMonriWebPayExternalPaymentOption($params);
+				break;
+			case MonriConstants::PAYMENT_TYPE_MONRI_WSPAY:
+				$payment_options[] = $this->getMonriWSPayExternalPaymentOption($params);
+				break;
+		}
 
         return $payment_options;
     }
@@ -378,9 +383,8 @@ class Monri extends PaymentModule
         return $externalOption;
     }
 
-	public function getMonriWSPayExternalPaymentOption($params)
+	public function getMonriWSPayExternalPaymentOption()
 	{
-		$externalOption = null;
 
 		if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
 			$externalOption = new \PrestaShop\PrestaShop\Core\Payment\PaymentOption();
@@ -400,8 +404,7 @@ class Monri extends PaymentModule
 
 		$customer = $this->context->customer;
 		$cart = $this->context->cart;
-		//todo: add customer language
-		$default_lang = strtoupper($this->context->language->iso_code);
+		$language = strtoupper($this->context->language->iso_code);
 		$mode = Configuration::get(MonriConstants::KEY_MODE);
 		$shop_id = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_SHOP_ID_PROD : MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
 		$form_url = $this->context->link->getModuleLink($this->name, 'WSPaySubmit', array(), true);
@@ -438,7 +441,7 @@ class Monri extends PaymentModule
 				[
 					'name' => 'Lang',
 					'type' => 'hidden',
-					'value' => $default_lang
+					'value' => $language
 				],
 			'TotalAmount' =>
 				[
