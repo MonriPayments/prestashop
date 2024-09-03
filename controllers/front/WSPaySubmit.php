@@ -34,14 +34,13 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
 	{
 
 		if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-			PrestaShopLogger::addLog('Invalid payment option or invalid context.');
-			$this->setTemplate('module:monri/views/templates/front/error.tpl');
-			return;
+			//todo: add error message for customer
+			Tools::redirect('index.php?controller=order&step=1');
 		}
 
 		$cart = $this->context->cart;
 		$mode = Configuration::get(MonriConstants::KEY_MODE);
-		$secret_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
+		$secret_key = Monri::getMonriWSPaySecretKey();
 		$amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
 		$form_url = $mode == MonriConstants::MODE_PROD ? 'https://form.wspay.biz/authorization.aspx' : 'https://formtest.wspay.biz/authorization.aspx';
 

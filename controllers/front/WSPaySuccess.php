@@ -33,34 +33,34 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 	public function postProcess()
 	{
 		try {
-			//todo: sanitize. Does Presta shop have it?
 			PrestaShopLogger::addLog("Response data: " . ( print_r( $_GET, true ) ));
-			$success       = ( isset( $_GET['Success'] ) && $_GET['Success'] === '1' ) ? '1' : '0';
-			$approval_code = ! empty( $_GET['ApprovalCode'] ) ? $_GET['ApprovalCode'] : '';
+			$success       = (( Tools::getValue('Success')) && Tools::getValue('Success') === '1' ) ? '1' : '0';
+			$approval_code = Tools::getValue('ApprovalCode') ? Tools::getValue('ApprovalCode') : '';
 			$trx_authorized = ( $success === '1' ) && ! empty( $approval_code );
+			$error_file_template = 'module:monri/views/templates/front/error.tpl';
 
 			if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
 				PrestaShopLogger::addLog('Invalid payment option or invalid context.');
-				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				$this->setTemplate($error_file_template);
 				return;
 			}
 
-			if ( ! isset( $_GET['ShoppingCartID'] ) ) {
+			if ( ! Tools::getValue('ShoppingCartID') ) {
 				PrestaShopLogger::addLog('Shopping cart ID is missing.');
-				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				$this->setTemplate($error_file_template);
 				return;
 			}
-			$cart_id = explode('_', $_GET['ShoppingCartID'], 2);
+			$cart_id = explode('_', Tools::getValue('ShoppingCartID'), 2);
 
 			if ( empty($cart_id) ) {
 				PrestaShopLogger::addLog('Invalid shopping cart ID.');
-				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				$this->setTemplate($error_file_template);
 				return;
 			}
 
 			if ( !$this->validateReturn() || !$trx_authorized ) {
 				PrestaShopLogger::addLog('Failed to validate response.');
-				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				$this->setTemplate($error_file_template);
 				return;
 			}
 
@@ -68,7 +68,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 			$order = Order::getByCartId($cart_id);
 			if($order) {
 				PrestaShopLogger::addLog('Order with this order id already exists.');
-				$this->setTemplate('module:monri/views/templates/front/error.tpl');
+				$this->setTemplate($error_file_template);
 				return;
 			}
 			$cart = new Cart($cart_id);
@@ -101,8 +101,8 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 			$extra_vars = [];
 
 			foreach ($trx_fields as $field) {
-				if(isset($_GET[$field])) {
-					$extra_vars[$field] = $_GET[$field];
+				if(Tools::getValue($field)) {
+					$extra_vars[$field] = Tools::getValue($field);
 				}
 			}
 
@@ -110,15 +110,15 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 				$extra_vars['transaction_id'] = $extra_vars['WsPayOrderId'];
 			}
 
-			$currencyId = $cart->id_currency;
+			$currency_id = $cart->id_currency;
 			$customer = new \Customer($cart->id_customer);
-			$amount = (float) str_replace(",", ".", $_GET['Amount']);
+			$amount = (float) str_replace(",", ".", Tools::getValue('Amount'));
 			// todo: check what happens with promo codes
 
 			// Presta shop creates order only on success redirect
 			$this->module->validateOrder(
 				$cart->id, 2, $amount, $this->module->displayName, null, $extra_vars,
-				(int)$currencyId, false, $customer->secure_key
+				(int)$currency_id, false, $customer->secure_key
 			);
 
 			\Tools::redirect(
@@ -130,7 +130,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 		}
 		catch (Exception $e) {
 			PrestaShopLogger::addLog($e->getMessage());
-			$this->setTemplate('module:monri/views/templates/front/error.tpl');
+			$this->setTemplate($error_file_template);
 		}
 
 	}
@@ -141,14 +141,13 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 	 */
 	private function validateReturn() {
 
-		if ( ! isset( $_GET['ShoppingCartID'], $_GET['Signature'] ) ) {
+		if ( !Tools::getValue('Success') || !Tools::getValue('ShoppingCartID') ) {
 			return false;
 		}
-		//todo: sanitize response data
-		$order_id      = ( $_GET['ShoppingCartID'] );
-		$digest        = $_GET['Signature'];
-		$success       = ( isset( $_GET['Success'] ) && $_GET['Success'] === '1' ) ? '1' : '0';
-		$approval_code = isset( $_GET['ApprovalCode'] ) ? $_GET['ApprovalCode'] : '';
+		$order_id      = Tools::getValue('ShoppingCartID');
+		$digest        = Tools::getValue('Signature');
+		$success       = (( Tools::getValue('Success') ) && Tools::getValue('Success') === '1' ) ? '1' : '0';
+		$approval_code = Tools::getValue('ApprovalCode') ? Tools::getValue('ApprovalCode'): '';
 
 
 		$mode = Configuration::get(MonriConstants::KEY_MODE);
