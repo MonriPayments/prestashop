@@ -414,8 +414,6 @@ class Monri extends PaymentModule
         $address = new Address($cart->id_address_delivery);
         $amount = number_format($cart->getOrderTotal(), 2, ',', '');
         $cart_id = $cart->id . "_" . time();
-        //will be used to validate on success page
-        $_SESSION['cart_id'] = $cart_id;
 
         $inputs = [
         'Version' =>
