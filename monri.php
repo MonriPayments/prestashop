@@ -186,7 +186,6 @@ class Monri extends PaymentModule
         $currency = new Currency($cart->id_currency);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
         $order_number = $cart->id . "_" . time();
-        $_SESSION['order_number'] = $order_number;
 
         $inputs = [
             'utf8' =>
