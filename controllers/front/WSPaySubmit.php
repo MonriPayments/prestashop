@@ -44,7 +44,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
 		$amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
 		$form_url = $mode == MonriConstants::MODE_PROD ? 'https://form.wspay.biz/authorization.aspx' : 'https://formtest.wspay.biz/authorization.aspx';
 
-		$prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
+		$prefix = Tools::getValue('monri_module_name', 'monri');
 
 		$from_post = [
 			'Version',
@@ -72,7 +72,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
 			$inputs[$item] = [
 				'name' => $item,
 				'type' => 'hidden',
-				'value' => $_POST[$prefix . '_' . $item]
+				'value' => Tools::getValue($prefix . '_' . $item)
 			];
 		}
 

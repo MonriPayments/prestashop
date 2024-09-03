@@ -34,8 +34,8 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 	{
 		try {
 			PrestaShopLogger::addLog("Response data: " . ( print_r( $_GET, true ) ));
-			$success       = (( Tools::getValue('Success')) && Tools::getValue('Success') === '1' ) ? '1' : '0';
-			$approval_code = Tools::getValue('ApprovalCode') ? Tools::getValue('ApprovalCode') : '';
+			$success       = ( Tools::getValue('Success') && Tools::getValue('Success') === '1' ) ? '1' : '0';
+			$approval_code = Tools::getValue('ApprovalCode', '');
 			$trx_authorized = ( $success === '1' ) && ! empty( $approval_code );
 			$error_file_template = 'module:monri/views/templates/front/error.tpl';
 
