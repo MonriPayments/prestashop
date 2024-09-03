@@ -51,7 +51,7 @@ class Monri extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess'];
+        $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
@@ -410,6 +410,7 @@ class Monri extends PaymentModule
 		$form_url = $this->context->link->getModuleLink($this->name, 'WSPaySubmit', array(), true);
 		$success_url = $this->context->link->getModuleLink($this->name, 'WSPaySuccess', array(), true);
 		$cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', array(), true);
+		$error_url = $this->context->link->getModuleLink($this->name, 'error', array(), true);
 
 		$address = new Address($cart->id_address_delivery);
 		$amount = number_format( $cart->getOrderTotal(), 2, ',', '' );
@@ -465,7 +466,7 @@ class Monri extends PaymentModule
 				[
 					'name' => 'ReturnErrorURL',
 					'type' => 'hidden',
-					'value' => $cancel_url
+					'value' => $error_url
 				],
 			'CustomerFirstName' =>
 				[
