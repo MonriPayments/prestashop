@@ -27,91 +27,89 @@
 
 class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 {
-	/**
-	 * @see FrontController::postProcess()
-	 */
-	public function postProcess()
-	{
-		$cart = $this->context->cart;
-		$mode = Configuration::get(MonriConstants::KEY_MODE);
-		$merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_MERCHANT_KEY_PROD : MonriConstants::MONRI_MERCHANT_KEY_TEST);
-		$amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-		$form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+    /**
+     * @see FrontController::postProcess()
+     */
+    public function postProcess()
+    {
+        $cart = $this->context->cart;
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_MERCHANT_KEY_PROD : MonriConstants::MONRI_MERCHANT_KEY_TEST);
+        $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
+        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
 
-		$prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
+        $prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
 
-		$from_post = [
-			'utf8',
-			'authenticity_token',
-			'ch_full_name',
-			'ch_address',
-			'ch_city',
-			'ch_zip',
-			'ch_country',
-			'ch_phone',
-			'ch_email',
-			'order_info',
-			'order_number',
-			'currency',
-			'transaction_type',
-			'number_of_installments',
-			'cc_type_for_installments',
-			'installments_disabled',
-			'force_cc_type',
-			'moto',
-			'language',
-			'tokenize_pan_until',
-			'custom_params',
-			'tokenize_pan',
-			'tokenize_pan_offered',
-			'tokenize_brands',
-			'whitelisted_pan_tokens',
-			'custom_attributes',
-			'success_url_override',
-			'cancel_url_override'
-		];
+        $from_post = [
+            'utf8',
+            'authenticity_token',
+            'ch_full_name',
+            'ch_address',
+            'ch_city',
+            'ch_zip',
+            'ch_country',
+            'ch_phone',
+            'ch_email',
+            'order_info',
+            'order_number',
+            'currency',
+            'transaction_type',
+            'number_of_installments',
+            'cc_type_for_installments',
+            'installments_disabled',
+            'force_cc_type',
+            'moto',
+            'language',
+            'tokenize_pan_until',
+            'custom_params',
+            'tokenize_pan',
+            'tokenize_pan_offered',
+            'tokenize_brands',
+            'whitelisted_pan_tokens',
+            'custom_attributes'
+        ];
 
 
-		$inputs = [];
+        $inputs = [];
 
-		foreach ($from_post as $item) {
-			$inputs[$item] = [
-				'name' => $item,
-				'type' => 'hidden',
-				'value' => $_POST[$prefix . '_' . $item]
-			];
-		}
+        foreach ($from_post as $item) {
+            $inputs[$item] = [
+                'name' => $item,
+                'type' => 'hidden',
+                'value' => $_POST[$prefix . '_' . $item]
+            ];
+        }
 
 //        echo '<pre>' . var_export($inputs, true) . '</pre>';
 //        die();
 
-		$inputs['amount'] = [
-			'name' => 'amount',
-			'type' => 'hidden',
-			'value' => $amount
-		];
+        $inputs['amount'] = [
+            'name' => 'amount',
+            'type' => 'hidden',
+            'value' => $amount
+        ];
 
-		$order_number = $inputs['order_number']['value'];
+        $order_number = $inputs['order_number']['value'];
 
-		$inputs['digest'] = [
-			'name' => 'digest',
-			'type' => 'hidden',
-			'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
-		];
+        $inputs['digest'] = [
+            'name' => 'digest',
+            'type' => 'hidden',
+            'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
+        ];
 
-		$this->context->smarty->assign("monri_inputs", $inputs);
+        $this->context->smarty->assign("monri_inputs", $inputs);
 
-		$this->context->smarty->assign('action', "$form_url/v2/form");
+        $this->context->smarty->assign('action', "$form_url/v2/form");
 
-		return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
+        return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
 
-	}
+    }
 
-	private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
-	{
+    private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
+    {
 //        $d = $merchant_key . $order_number . $amount . $currency;
 //        var_dump($d);
 //        die();
-		return hash('sha512', $merchant_key . $order_number . $amount . $currency);
-	}
+        return hash('sha512', $merchant_key . $order_number . $amount . $currency);
+    }
 }
