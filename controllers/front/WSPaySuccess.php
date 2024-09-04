@@ -40,35 +40,30 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-                PrestaShopLogger::addLog('Invalid payment option or invalid context.');
-                $this->setTemplate($error_file_template);
+				$this->setErrorTemplate('Invalid payment option or invalid context.');
                 return;
             }
 
             if (! Tools::getValue('ShoppingCartID')) {
-                PrestaShopLogger::addLog('Shopping cart ID is missing.');
-                $this->setTemplate($error_file_template);
+	            $this->setErrorTemplate('Shopping cart ID is missing.');
                 return;
             }
             $cart_id = explode('_', Tools::getValue('ShoppingCartID'), 2);
 
             if (empty($cart_id)) {
-                PrestaShopLogger::addLog('Invalid shopping cart ID.');
-                $this->setTemplate($error_file_template);
+	            $this->setErrorTemplate('Invalid shopping cart ID.');
                 return;
             }
 
             if (!$this->validateReturn() || !$trx_authorized) {
-                PrestaShopLogger::addLog('Failed to validate response.');
-                $this->setTemplate($error_file_template);
+	            $this->setErrorTemplate('Failed to validate response.');
                 return;
             }
 
             $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
-                PrestaShopLogger::addLog('Order with this order id already exists.');
-                $this->setTemplate($error_file_template);
+	            $this->setErrorTemplate('Order with this order id already exists.');
                 return;
             }
             $cart = new Cart($cart_id);
@@ -221,4 +216,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 
         return false;
     }
+
+	private function setErrorTemplate($message) {
+		$this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
+		$this->context->smarty->assign('error_message', $message);
+		PrestaShopLogger::addLog($message);
+		$this->setTemplate('module:monri/views/templates/front/error.tpl');
+	}
 }
