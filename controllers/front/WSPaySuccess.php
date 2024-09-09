@@ -38,6 +38,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $approval_code = Tools::getValue('ApprovalCode', '');
             $trx_authorized = ( $success === '1' ) && ! empty($approval_code);
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
+	        $mode = Configuration::get(MonriConstants::KEY_MODE);
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
 				$this->setErrorTemplate('Invalid payment option or invalid context.');
@@ -48,7 +49,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 	            $this->setErrorTemplate('Shopping cart ID is missing.');
                 return;
             }
-            $cart_id = explode('_', Tools::getValue('ShoppingCartID'), 2);
+	        $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('ShoppingCartID'), 2) : Tools::getValue('ShoppingCartID');
 
             if (empty($cart_id)) {
 	            $this->setErrorTemplate('Invalid shopping cart ID.');
