@@ -416,7 +416,7 @@ class Monri extends PaymentModule
 
         $address = new Address($cart->id_address_delivery);
         $amount = number_format($cart->getOrderTotal(), 2, ',', '');
-        $cart_id = $cart->id . "_" . time();
+		$cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . "_" . time());
 
         $inputs = [
         'Version' =>
@@ -556,7 +556,7 @@ class Monri extends PaymentModule
         }
     }
 
-    private function validateConfiguration($mode)
+    private function validateConfiguration($mode, $payment_type)
     {
         $mode_uppercase = strtoupper($mode);
         $monri_webpay_authenticity_token = Tools::getValue("MONRI_AUTHENTICITY_TOKEN_$mode_uppercase");
@@ -567,22 +567,22 @@ class Monri extends PaymentModule
         $output = null;
 
         // validating the input
-        if (empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) {
+        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri WebPay Merchant Key $mode"));
         }
 
         // validating the input
-        if (empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) {
+        if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri WebPay Api Key $mode"));
         }
 
         // validating the input
-        if (empty($monri_wspay_form_secret) || !Validate::isGenericName($monri_wspay_form_secret)) {
+        if ((empty($monri_wspay_form_secret) || !Validate::isGenericName($monri_wspay_form_secret)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri WSPay secret key $mode"));
         }
 
         // validating the input
-        if (empty($monri_wspay_shop_id) || !Validate::isGenericName($monri_wspay_shop_id)) {
+        if ((empty($monri_wspay_shop_id) || !Validate::isGenericName($monri_wspay_shop_id)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri WSPay shop id $mode"));
         }
 
@@ -610,8 +610,8 @@ class Monri extends PaymentModule
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
                 return $output . $this->displayForm();
             } else {
-                $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST);
-                $live_validate = $this->validateConfiguration(MonriConstants::MODE_PROD);
+                $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST, $payment_type);
+                $live_validate = $this->validateConfiguration(MonriConstants::MODE_PROD, $payment_type);
                 if ($test_validate == null && $live_validate == null) {
                     $this->updateConfiguration(MonriConstants::MODE_PROD);
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
