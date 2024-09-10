@@ -41,31 +41,26 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 	        $mode = Configuration::get(MonriConstants::KEY_MODE);
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-				$this->setErrorTemplate('Invalid payment option or invalid context.');
-                return;
+				return $this->setErrorTemplate('Invalid payment option or invalid context.');
             }
 
             if (! Tools::getValue('ShoppingCartID')) {
-	            $this->setErrorTemplate('Shopping cart ID is missing.');
-                return;
+	            return $this->setErrorTemplate('Shopping cart ID is missing.');
             }
 	        $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('ShoppingCartID'), 2) : Tools::getValue('ShoppingCartID');
 
             if (empty($cart_id)) {
-	            $this->setErrorTemplate('Invalid shopping cart ID.');
-                return;
+	            return $this->setErrorTemplate('Invalid shopping cart ID.');
             }
 
             if (!$this->validateReturn() || !$trx_authorized) {
-	            $this->setErrorTemplate('Failed to validate response.');
-                return;
+	            return $this->setErrorTemplate('Failed to validate response.');
             }
 
             $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
-	            $this->setErrorTemplate('Order with this order id already exists.');
-                return;
+	            return $this->setErrorTemplate('Order with this order id already exists.');
             }
             $cart = new Cart($cart_id);
 
