@@ -48,22 +48,22 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $prefix = Tools::getValue('monri_module_name', 'monri');
 
         $from_post = [
-        'Version',
-        'ShopID',
-        'ShoppingCartID',
-        'Lang',
-        'TotalAmount',
-        'ReturnUrl',
-        'CancelUrl',
-        'ReturnErrorURL',
-        'CustomerFirstName',
-        'CustomerLastName',
-        'CustomerAddress',
-        'CustomerCity',
-        'CustomerZIP',
-        'CustomerCountry',
-        'CustomerPhone',
-        'CustomerEmail',
+	        'Version',
+	        'ShopID',
+	        'ShoppingCartID',
+	        'Lang',
+	        'TotalAmount',
+	        'ReturnUrl',
+	        'CancelUrl',
+	        'ReturnErrorURL',
+	        'CustomerFirstName',
+	        'CustomerLastName',
+	        'CustomerAddress',
+	        'CustomerCity',
+	        'CustomerZIP',
+	        'CustomerCountry',
+	        'CustomerPhone',
+	        'CustomerEmail',
         ];
 
 
@@ -81,9 +81,9 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $shop_id = $inputs['ShopID']['value'];
 
         $inputs['Signature'] = [
-        'name' => 'Signature',
-        'type' => 'hidden',
-        'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
+	        'name' => 'Signature',
+	        'type' => 'hidden',
+	        'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
         ];
 
         $this->context->smarty->assign("monri_inputs", $inputs);

@@ -65,27 +65,27 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $cart = new Cart($cart_id);
 
             $trx_fields = [
-            'CustomerFirstname',
-            'CustomerSurname',
-            'CustomerAddress',
-            'CustomerCountry',
-            'CustmerZIP',
-            'CustomerCity',
-            'CustomerEmail',
-            'CustomerPhone',
-            'ShoppingCartID',
-            'Lang',
-            'DateTime',
-            'Amount',
-            'ECI',
-            'STAN',
-            'WsPayOrderId',
-            'PaymentType',
-            'CreditCardNumber',
-            'PaymentPlan',
-            'Success',
-            'ApprovalCode',
-            'ErrorMessage'
+	            'CustomerFirstname',
+	            'CustomerSurname',
+	            'CustomerAddress',
+	            'CustomerCountry',
+	            'CustmerZIP',
+	            'CustomerCity',
+	            'CustomerEmail',
+	            'CustomerPhone',
+	            'ShoppingCartID',
+	            'Lang',
+	            'DateTime',
+	            'Amount',
+	            'ECI',
+	            'STAN',
+	            'WsPayOrderId',
+	            'PaymentType',
+	            'CreditCardNumber',
+	            'PaymentPlan',
+	            'Success',
+	            'ApprovalCode',
+	            'ErrorMessage'
             ];
 
 
@@ -163,14 +163,14 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
         );
 
         $digest_parts = array(
-        $shop_id,
-        $secret_key,
-        $order_id,
-        $secret_key,
-        $success,
-        $secret_key,
-        $approval_code,
-        $secret_key,
+	        $shop_id,
+	        $secret_key,
+	        $order_id,
+	        $secret_key,
+	        $success,
+	        $secret_key,
+	        $approval_code,
+	        $secret_key,
         );
         $check_digest = hash('sha512', implode('', $digest_parts));
 
