@@ -650,7 +650,7 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
-                    'hint' => $this->l('TODO')
+                    'hint' => $this->l('If you don\'t know your test merchant key please contact support@monri.com')
                 ],
                 [
                     'type' => 'text',
@@ -659,7 +659,7 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
-                    'hint' => $this->l('TODO')
+                    'hint' => $this->l('If you don\'t know your production merchant key please contact support@monri.com')
                 ],
                 [
                     'type' => 'radio',
@@ -758,7 +758,7 @@ class Monri extends PaymentModule
                 'size' => 20,
                 'required' => true,
                 'lang' => false,
-                'hint' => $this->l('TODO')
+                'hint' => $this->l('If you don\'t know your test shop id please contact wspay@wspay.info')
                 ],
                 [
                 'type' => 'text',
@@ -767,7 +767,7 @@ class Monri extends PaymentModule
                 'size' => 20,
                 'required' => true,
                 'lang' => false,
-                'hint' => $this->l('TODO')
+                'hint' => $this->l('If you don\'t know your production shop id please contact wspay@wspay.info')
                 ],
             ],
             'submit' => array(

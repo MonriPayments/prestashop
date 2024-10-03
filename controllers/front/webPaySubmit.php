@@ -66,7 +66,9 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'tokenize_pan_offered',
             'tokenize_brands',
             'whitelisted_pan_tokens',
-            'custom_attributes'
+            'custom_attributes',
+	        'cancel_url_override',
+	        'success_url_override'
         ];
 
 
