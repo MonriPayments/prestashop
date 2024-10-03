@@ -419,103 +419,103 @@ class Monri extends PaymentModule
 		$cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . "_" . time());
 
         $inputs = [
-        'Version' =>
-        [
-                    'name' => 'Version',
-                    'type' => 'hidden',
-                    'value' => MonriConstants::MONRI_WSPAY_VERSION
-        ],
-        'ShopID' =>
-        [
-        'name' => 'ShopID',
-        'type' => 'hidden',
-        'value' => $shop_id
-        ],
-        'ShoppingCartID' =>
-        [
-        'name' => 'ShoppingCartID',
-        'type' => 'hidden',
-        // TODO: discuss this
-        'value' => $cart_id
-        ],
-        'Lang' =>
-        [
-        'name' => 'Lang',
-        'type' => 'hidden',
-        'value' => $language
-        ],
-        'TotalAmount' =>
-        [
-        'name' => 'TotalAmount',
-        'type' => 'hidden',
-        'value' => $amount
-        ],
-        'ReturnUrl' =>
-        [
-        'name' => 'ReturnUrl',
-        'type' => 'hidden',
-        'value' => $success_url
-        ],
-        'CancelUrl' =>
-        [
-        'name' => 'CancelUrl',
-        'type' => 'hidden',
-        'value' => $cancel_url
-        ],
-        'ReturnErrorURL' =>
-        [
-        'name' => 'ReturnErrorURL',
-        'type' => 'hidden',
-        'value' => $error_url
-        ],
-        'CustomerFirstName' =>
-        [
-        'name' => 'CustomerFirstName',
-        'type' => 'hidden',
-        'value' => $customer->firstname
-        ],
-        'CustomerLastName' =>
-        [
-        'name' => 'CustomerLastName',
-        'type' => 'hidden',
-        'value' => $customer->lastname
-        ],
-        'CustomerAddress' =>
-        [
-        'name' => 'CustomerAddress',
-        'type' => 'hidden',
-        'value' => $address->address1
-        ],
-        'CustomerCity' =>
-        [
-        'name' => 'CustomerCity',
-        'type' => 'hidden',
-        'value' => $address->city
-        ],
-        'CustomerZIP' =>
-        [
-        'name' => 'CustomerZIP',
-        'type' => 'hidden',
-        'value' => $address->postcode
-        ],
-        'CustomerCountry' =>
-        [
-        'name' => 'CustomerCountry',
-        'type' => 'hidden',
-        'value' => $address->country
-        ],
-        'CustomerPhone' =>
-        [
-        'name' => 'CustomerPhone',
-        'type' => 'hidden',
-        'value' => $address->phone
-        ],
-        'CustomerEmail' =>
-        [
-        'name' => 'CustomerEmail',
-        'type' => 'hidden',
-        'value' => $customer->email
-        ],
+	        'Version' =>
+	        [
+	                    'name' => 'Version',
+	                    'type' => 'hidden',
+	                    'value' => MonriConstants::MONRI_WSPAY_VERSION
+	        ],
+	        'ShopID' =>
+	        [
+		        'name' => 'ShopID',
+		        'type' => 'hidden',
+		        'value' => $shop_id
+	        ],
+	        'ShoppingCartID' =>
+	        [
+		        'name' => 'ShoppingCartID',
+		        'type' => 'hidden',
+		        // TODO: discuss this
+		        'value' => $cart_id
+	        ],
+	        'Lang' =>
+	        [
+		        'name' => 'Lang',
+		        'type' => 'hidden',
+		        'value' => $language
+	        ],
+	        'TotalAmount' =>
+	        [
+		        'name' => 'TotalAmount',
+		        'type' => 'hidden',
+		        'value' => $amount
+	        ],
+	        'ReturnUrl' =>
+	        [
+		        'name' => 'ReturnUrl',
+		        'type' => 'hidden',
+		        'value' => $success_url
+	        ],
+	        'CancelUrl' =>
+	        [
+		        'name' => 'CancelUrl',
+		        'type' => 'hidden',
+		        'value' => $cancel_url
+	        ],
+	        'ReturnErrorURL' =>
+	        [
+		        'name' => 'ReturnErrorURL',
+		        'type' => 'hidden',
+		        'value' => $error_url
+	        ],
+	        'CustomerFirstName' =>
+	        [
+		        'name' => 'CustomerFirstName',
+		        'type' => 'hidden',
+		        'value' => $customer->firstname
+	        ],
+	        'CustomerLastName' =>
+	        [
+		        'name' => 'CustomerLastName',
+		        'type' => 'hidden',
+		        'value' => $customer->lastname
+	        ],
+	        'CustomerAddress' =>
+	        [
+		        'name' => 'CustomerAddress',
+		        'type' => 'hidden',
+		        'value' => $address->address1
+	        ],
+	        'CustomerCity' =>
+	        [
+		        'name' => 'CustomerCity',
+		        'type' => 'hidden',
+		        'value' => $address->city
+	        ],
+	        'CustomerZIP' =>
+	        [
+		        'name' => 'CustomerZIP',
+		        'type' => 'hidden',
+		        'value' => $address->postcode
+	        ],
+	        'CustomerCountry' =>
+	        [
+		        'name' => 'CustomerCountry',
+		        'type' => 'hidden',
+		        'value' => $address->country
+	        ],
+	        'CustomerPhone' =>
+	        [
+		        'name' => 'CustomerPhone',
+		        'type' => 'hidden',
+		        'value' => $address->phone
+	        ],
+	        'CustomerEmail' =>
+	        [
+		        'name' => 'CustomerEmail',
+		        'type' => 'hidden',
+		        'value' => $customer->email
+	        ],
         ];
 
         $new_inputs = [];
@@ -528,12 +528,12 @@ class Monri extends PaymentModule
         }
 
         $new_inputs['monri_module_name'] = [
-        'name' => 'monri_module_name',
-        'type' => 'hidden',
-        'value' => 'monri',
+	        'name' => 'monri_module_name',
+	        'type' => 'hidden',
+	        'value' => 'monri',
         ];
 
-        //        Correct test?
+        // Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri WSPay - Kartično plaćanje'))
             ->setAction($form_url)
             ->setInputs($new_inputs);
