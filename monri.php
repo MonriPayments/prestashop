@@ -2,7 +2,6 @@
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -12,9 +11,9 @@ class MonriConstants
     const MODE_PROD = 'prod';
     const MODE_TEST = 'test';
 
-	const TRANSACTION_TYPE_AUTHORIZE = 'authorize';
-	const TRANSACTION_TYPE_CAPTURE = 'capture';
-	const TRANSACTION_TYPE = 'TRANSACTION_TYPE';
+    const TRANSACTION_TYPE_AUTHORIZE = 'authorize';
+    const TRANSACTION_TYPE_CAPTURE = 'capture';
+    const TRANSACTION_TYPE = 'TRANSACTION_TYPE';
     const PAYMENT_GATEWAY_SERVICE_TYPE = 'PAYMENT_GATEWAY_SERVICE_TYPE';
 
     const PAYMENT_TYPE_MONRI_WEBPAY = 'monri_webpay';
@@ -40,7 +39,7 @@ class MonriConstants
 class Monri extends PaymentModule
 {
     protected $_html = '';
-    protected $_postErrors = array();
+    protected $_postErrors = [];
 
     public $details;
     public $owner;
@@ -84,9 +83,9 @@ class Monri extends PaymentModule
 
     public function install()
     {
-
         if (!$this->isPrestaShopSupportedVersion()) {
             $this->_errors[] = $this->l('Sorry, this module is not compatible with your version.');
+
             return false;
         }
 
@@ -118,25 +117,23 @@ class Monri extends PaymentModule
 
         $payment_options = [];
         switch ($payment_service_type) {
-        case MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY:
-            $payment_options[] = $this->getMonriWebPayExternalPaymentOption($params);
-            break;
-        case MonriConstants::PAYMENT_TYPE_MONRI_WSPAY:
-            $payment_options[] = $this->getMonriWSPayExternalPaymentOption($params);
-            break;
+            case MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY:
+                $payment_options[] = $this->getMonriWebPayExternalPaymentOption($params);
+                break;
+            case MonriConstants::PAYMENT_TYPE_MONRI_WSPAY:
+                $payment_options[] = $this->getMonriWSPayExternalPaymentOption($params);
+                break;
         }
 
         return $payment_options;
     }
 
-    /**
-     *
-     */
     public function hookPaymentReturn()
     {
         if (!$this->active) {
             return null;
         }
+
         return;
     }
 
@@ -152,6 +149,7 @@ class Monri extends PaymentModule
                 }
             }
         }
+
         return false;
     }
 
@@ -159,20 +157,18 @@ class Monri extends PaymentModule
     {
         $externalOption = null;
 
-        if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new \PrestaShop\PrestaShop\Core\Payment\PaymentOption();
+        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
+            $externalOption = new PaymentOption();
         } else {
-            if(!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new \Exception(
-                    sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_)
-                );
+            if (!class_exists('Core_Business_Payment_PaymentOption')) {
+                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
             }
 
             $externalOption = new Core_Business_Payment_PaymentOption();
         }
 
-        if(!$externalOption) {
-            throw new \Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
+        if (!$externalOption) {
+            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
         }
 
         $customer = $this->context->customer;
@@ -180,192 +176,164 @@ class Monri extends PaymentModule
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD : MonriConstants::MONRI_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_MERCHANT_KEY_PROD : MonriConstants::MONRI_MERCHANT_KEY_TEST);
-        $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', array(), true);
-        $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', array(), true);
-        $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', array(), true);
+        $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', [], true);
+        $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', [], true);
+        $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
 
         $address = new Address($cart->id_address_delivery);
 
         $currency = new Currency($cart->id_currency);
-        $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $order_number = $cart->id . "_" . time();
+        $amount = '' . ((int) ((float) $cart->getOrderTotal() * 100));
+        $order_number = $cart->id . '_' . time();
 
         $inputs = [
-            'utf8' =>
-                [
-                    'name' => 'utf8',
-                    'type' => 'hidden',
-                    'value' => '✓',
-                ],
-            'authenticity_token' =>
-                [
-                    'name' => 'authenticity_token',
-                    'type' => 'hidden',
-                    'value' => $authenticity_token
-                ],
-            'ch_full_name' =>
-                [
-                    'name' => 'ch_full_name',
-                    'type' => 'hidden',
-                    'value' => "{$customer->firstname} {$customer->lastname}"
-                ],
-            'ch_address' =>
-                [
-                    'name' => 'ch_address',
-                    'type' => 'hidden',
-                    'value' => $address->address1
-                ],
-            'ch_city' =>
-                [
-                    'name' => 'ch_city',
-                    'type' => 'hidden',
-                    'value' => $address->city
-                ],
-            'ch_zip' =>
-                [
-                    'name' => 'ch_zip',
-                    'type' => 'hidden',
-                    'value' => $address->postcode
-                ],
-            'ch_country' =>
-                [
-                    'name' => 'ch_country',
-                    'type' => 'hidden',
-                    'value' => $address->country
-                ],
-            'ch_phone' =>
-                [
-                    'name' => 'ch_phone',
-                    'type' => 'hidden',
-                    'value' => $address->phone
-                ],
-            'ch_email' =>
-                [
-                    'name' => 'ch_email',
-                    'type' => 'hidden',
-                    'value' => $customer->email
-                ],
-            'order_info' =>
-                [
-                    'name' => 'order_info',
-                    'type' => 'hidden',
-                    'value' => "Order {$cart->id}"
-                ],
-            'order_number' =>
-                [
-                    'name' => 'order_number',
-                    'type' => 'hidden',
-                    // TODO: discuss this
-                    'value' => $order_number
-                ],
-            'currency' =>
-                [
-                    'name' => 'currency',
-                    'type' => 'hidden',
-                    'value' => $currency->iso_code,
-                ],
-            'transaction_type' =>
-                [
-                    'name' => 'transaction_type',
-                    'type' => 'hidden',
-                    'value' => 'purchase',
-                ],
-            'number_of_installments' =>
-                [
-                    'name' => 'number_of_installments',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'cc_type_for_installments' =>
-                [
-                    'name' => 'cc_type_for_installments',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'installments_disabled' =>
-                [
-                    'name' => 'installments_disabled',
-                    'type' => 'hidden',
-                    'value' => 'true',
-                ],
-            'force_cc_type' =>
-                [
-                    'name' => 'force_cc_type',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'moto' =>
-                [
-                    'name' => 'moto',
-                    'type' => 'hidden',
-                    'value' => 'false',
-                ],
-            'language' =>
-                [
-                    'name' => 'language',
-                    'type' => 'hidden',
-                    'value' => 'en',
-                ],
-            'tokenize_pan_until' =>
-                [
-                    'name' => 'tokenize_pan_until',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'custom_params' =>
-                [
-                    'name' => 'custom_params',
-                    'type' => 'hidden',
-                    'value' => '{}',
-                ],
-            'tokenize_pan' =>
-                [
-                    'name' => 'tokenize_pan',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'tokenize_pan_offered' =>
-                [
-                    'name' => 'tokenize_pan_offered',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'tokenize_brands' =>
-                [
-                    'name' => 'tokenize_brands',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'whitelisted_pan_tokens' =>
-                [
-                    'name' => 'whitelisted_pan_tokens',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'custom_attributes' =>
-                [
-                    'name' => 'custom_attributes',
-                    'type' => 'hidden',
-                    'value' => '',
-                ],
-            'success_url_override' =>
-                [
-                    'name' => 'success_url_override',
-                    'type' => 'hidden',
-                    'value' => $success_url,
-                ],
-            'cancel_url_override' =>
-                [
-                    'name' => 'cancel_url_override',
-                    'type' => 'hidden',
-                    'value' => $cancel_url,
-                ],
+            'utf8' => [
+                'name' => 'utf8',
+                'type' => 'hidden',
+                'value' => '✓',
+            ],
+            'authenticity_token' => [
+                'name' => 'authenticity_token',
+                'type' => 'hidden',
+                'value' => $authenticity_token,
+            ],
+            'ch_full_name' => [
+                'name' => 'ch_full_name',
+                'type' => 'hidden',
+                'value' => "{$customer->firstname} {$customer->lastname}",
+            ],
+            'ch_address' => [
+                'name' => 'ch_address',
+                'type' => 'hidden',
+                'value' => $address->address1,
+            ],
+            'ch_city' => [
+                'name' => 'ch_city',
+                'type' => 'hidden',
+                'value' => $address->city,
+            ],
+            'ch_zip' => [
+                'name' => 'ch_zip',
+                'type' => 'hidden',
+                'value' => $address->postcode,
+            ],
+            'ch_country' => [
+                'name' => 'ch_country',
+                'type' => 'hidden',
+                'value' => $address->country,
+            ],
+            'ch_phone' => [
+                'name' => 'ch_phone',
+                'type' => 'hidden',
+                'value' => $address->phone,
+            ],
+            'ch_email' => [
+                'name' => 'ch_email',
+                'type' => 'hidden',
+                'value' => $customer->email,
+            ],
+            'order_info' => [
+                'name' => 'order_info',
+                'type' => 'hidden',
+                'value' => "Order {$cart->id}",
+            ],
+            'order_number' => [
+                'name' => 'order_number',
+                'type' => 'hidden',
+                // TODO: discuss this
+                'value' => $order_number,
+            ],
+            'currency' => [
+                'name' => 'currency',
+                'type' => 'hidden',
+                'value' => $currency->iso_code,
+            ],
+            'transaction_type' => [
+                'name' => 'transaction_type',
+                'type' => 'hidden',
+                'value' => 'purchase',
+            ],
+            'number_of_installments' => [
+                'name' => 'number_of_installments',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'cc_type_for_installments' => [
+                'name' => 'cc_type_for_installments',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'installments_disabled' => [
+                'name' => 'installments_disabled',
+                'type' => 'hidden',
+                'value' => 'true',
+            ],
+            'force_cc_type' => [
+                'name' => 'force_cc_type',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'moto' => [
+                'name' => 'moto',
+                'type' => 'hidden',
+                'value' => 'false',
+            ],
+            'language' => [
+                'name' => 'language',
+                'type' => 'hidden',
+                'value' => 'en',
+            ],
+            'tokenize_pan_until' => [
+                'name' => 'tokenize_pan_until',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'custom_params' => [
+                'name' => 'custom_params',
+                'type' => 'hidden',
+                'value' => '{}',
+            ],
+            'tokenize_pan' => [
+                'name' => 'tokenize_pan',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'tokenize_pan_offered' => [
+                'name' => 'tokenize_pan_offered',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'tokenize_brands' => [
+                'name' => 'tokenize_brands',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'whitelisted_pan_tokens' => [
+                'name' => 'whitelisted_pan_tokens',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'custom_attributes' => [
+                'name' => 'custom_attributes',
+                'type' => 'hidden',
+                'value' => '',
+            ],
+            'success_url_override' => [
+                'name' => 'success_url_override',
+                'type' => 'hidden',
+                'value' => $success_url,
+            ],
+            'cancel_url_override' => [
+                'name' => 'cancel_url_override',
+                'type' => 'hidden',
+                'value' => $cancel_url,
+            ],
         ];
 
         $new_inputs = [];
         foreach ($inputs as $k => $v) {
             $new_inputs["monri_$k"] = [
-                'name' => "monri_" . $k,
+                'name' => 'monri_' . $k,
                 'type' => 'hidden',
                 'value' => $v['value'],
             ];
@@ -387,21 +355,18 @@ class Monri extends PaymentModule
 
     public function getMonriWSPayExternalPaymentOption()
     {
-
-        if(version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new \PrestaShop\PrestaShop\Core\Payment\PaymentOption();
+        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
+            $externalOption = new PaymentOption();
         } else {
-            if(!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new \Exception(
-                    sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_)
-                );
+            if (!class_exists('Core_Business_Payment_PaymentOption')) {
+                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
             }
 
             $externalOption = new Core_Business_Payment_PaymentOption();
         }
 
-        if(!$externalOption) {
-            throw new \Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
+        if (!$externalOption) {
+            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
         }
 
         $customer = $this->context->customer;
@@ -409,128 +374,112 @@ class Monri extends PaymentModule
         $language = strtoupper($this->context->language->iso_code);
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $shop_id = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_SHOP_ID_PROD : MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
-        $form_url = $this->context->link->getModuleLink($this->name, 'WSPaySubmit', array(), true);
-        $success_url = $this->context->link->getModuleLink($this->name, 'WSPaySuccess', array(), true);
-        $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', array(), true);
-        $error_url = $this->context->link->getModuleLink($this->name, 'error', array(), true);
+        $form_url = $this->context->link->getModuleLink($this->name, 'WSPaySubmit', [], true);
+        $success_url = $this->context->link->getModuleLink($this->name, 'WSPaySuccess', [], true);
+        $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
+        $error_url = $this->context->link->getModuleLink($this->name, 'error', [], true);
 
         $address = new Address($cart->id_address_delivery);
         $amount = number_format($cart->getOrderTotal(), 2, ',', '');
-		$cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . "_" . time());
+        $cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time());
 
         $inputs = [
-	        'Version' =>
-	        [
-	                    'name' => 'Version',
-	                    'type' => 'hidden',
-	                    'value' => MonriConstants::MONRI_WSPAY_VERSION
-	        ],
-	        'ShopID' =>
-	        [
-		        'name' => 'ShopID',
-		        'type' => 'hidden',
-		        'value' => $shop_id
-	        ],
-	        'ShoppingCartID' =>
-	        [
-		        'name' => 'ShoppingCartID',
-		        'type' => 'hidden',
-		        // TODO: discuss this
-		        'value' => $cart_id
-	        ],
-	        'Lang' =>
-	        [
-		        'name' => 'Lang',
-		        'type' => 'hidden',
-		        'value' => $language
-	        ],
-	        'TotalAmount' =>
-	        [
-		        'name' => 'TotalAmount',
-		        'type' => 'hidden',
-		        'value' => $amount
-	        ],
-	        'ReturnUrl' =>
-	        [
-		        'name' => 'ReturnUrl',
-		        'type' => 'hidden',
-		        'value' => $success_url
-	        ],
-	        'CancelUrl' =>
-	        [
-		        'name' => 'CancelUrl',
-		        'type' => 'hidden',
-		        'value' => $cancel_url
-	        ],
-	        'ReturnErrorURL' =>
-	        [
-		        'name' => 'ReturnErrorURL',
-		        'type' => 'hidden',
-		        'value' => $error_url
-	        ],
-	        'CustomerFirstName' =>
-	        [
-		        'name' => 'CustomerFirstName',
-		        'type' => 'hidden',
-		        'value' => $customer->firstname
-	        ],
-	        'CustomerLastName' =>
-	        [
-		        'name' => 'CustomerLastName',
-		        'type' => 'hidden',
-		        'value' => $customer->lastname
-	        ],
-	        'CustomerAddress' =>
-	        [
-		        'name' => 'CustomerAddress',
-		        'type' => 'hidden',
-		        'value' => $address->address1
-	        ],
-	        'CustomerCity' =>
-	        [
-		        'name' => 'CustomerCity',
-		        'type' => 'hidden',
-		        'value' => $address->city
-	        ],
-	        'CustomerZIP' =>
-	        [
-		        'name' => 'CustomerZIP',
-		        'type' => 'hidden',
-		        'value' => $address->postcode
-	        ],
-	        'CustomerCountry' =>
-	        [
-		        'name' => 'CustomerCountry',
-		        'type' => 'hidden',
-		        'value' => $address->country
-	        ],
-	        'CustomerPhone' =>
-	        [
-		        'name' => 'CustomerPhone',
-		        'type' => 'hidden',
-		        'value' => $address->phone
-	        ],
-	        'CustomerEmail' =>
-	        [
-		        'name' => 'CustomerEmail',
-		        'type' => 'hidden',
-		        'value' => $customer->email
-	        ],
+            'Version' => [
+                'name' => 'Version',
+                'type' => 'hidden',
+                'value' => MonriConstants::MONRI_WSPAY_VERSION,
+            ],
+            'ShopID' => [
+                'name' => 'ShopID',
+                'type' => 'hidden',
+                'value' => $shop_id,
+            ],
+            'ShoppingCartID' => [
+                'name' => 'ShoppingCartID',
+                'type' => 'hidden',
+                // TODO: discuss this
+                'value' => $cart_id,
+            ],
+            'Lang' => [
+                'name' => 'Lang',
+                'type' => 'hidden',
+                'value' => $language,
+            ],
+            'TotalAmount' => [
+                'name' => 'TotalAmount',
+                'type' => 'hidden',
+                'value' => $amount,
+            ],
+            'ReturnUrl' => [
+                'name' => 'ReturnUrl',
+                'type' => 'hidden',
+                'value' => $success_url,
+            ],
+            'CancelUrl' => [
+                'name' => 'CancelUrl',
+                'type' => 'hidden',
+                'value' => $cancel_url,
+            ],
+            'ReturnErrorURL' => [
+                'name' => 'ReturnErrorURL',
+                'type' => 'hidden',
+                'value' => $error_url,
+            ],
+            'CustomerFirstName' => [
+                'name' => 'CustomerFirstName',
+                'type' => 'hidden',
+                'value' => $customer->firstname,
+            ],
+            'CustomerLastName' => [
+                'name' => 'CustomerLastName',
+                'type' => 'hidden',
+                'value' => $customer->lastname,
+            ],
+            'CustomerAddress' => [
+                'name' => 'CustomerAddress',
+                'type' => 'hidden',
+                'value' => $address->address1,
+            ],
+            'CustomerCity' => [
+                'name' => 'CustomerCity',
+                'type' => 'hidden',
+                'value' => $address->city,
+            ],
+            'CustomerZIP' => [
+                'name' => 'CustomerZIP',
+                'type' => 'hidden',
+                'value' => $address->postcode,
+            ],
+            'CustomerCountry' => [
+                'name' => 'CustomerCountry',
+                'type' => 'hidden',
+                'value' => $address->country,
+            ],
+            'CustomerPhone' => [
+                'name' => 'CustomerPhone',
+                'type' => 'hidden',
+                'value' => $address->phone,
+            ],
+            'CustomerEmail' => [
+                'name' => 'CustomerEmail',
+                'type' => 'hidden',
+                'value' => $customer->email,
+            ],
         ];
 
         $new_inputs = [];
         foreach ($inputs as $k => $v) {
             $new_inputs["monri_$k"] = [
-            'name' => "monri_" . $k,
-            'type' => 'hidden',
-            'value' => $v['value'],
+                'name' => 'monri_' . $k,
+                'type' => 'hidden',
+                'value' => $v['value'],
             ];
         }
 
         $new_inputs['monri_module_name'] = [
-	        'name' => 'monri_module_name',
-	        'type' => 'hidden',
-	        'value' => 'monri',
+            'name' => 'monri_module_name',
+            'type' => 'hidden',
+            'value' => 'monri',
         ];
 
         // Correct test?
@@ -548,11 +497,10 @@ class Monri extends PaymentModule
             $mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD : MonriConstants::MONRI_AUTHENTICITY_TOKEN_TEST,
             $mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST,
             $mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_SHOP_ID_PROD : MonriConstants::MONRI_WSPAY_SHOP_ID_TEST,
-
         ];
 
         foreach ($update_keys as $key) {
-            Configuration::updateValue($key, (string)Tools::getValue($key));
+            Configuration::updateValue($key, (string) Tools::getValue($key));
         }
     }
 
@@ -560,14 +508,14 @@ class Monri extends PaymentModule
     {
         $mode_uppercase = strtoupper($mode);
         $monri_webpay_authenticity_token = Tools::getValue("MONRI_AUTHENTICITY_TOKEN_$mode_uppercase");
-        $monri_webpay_merchant_key = (string)Tools::getValue("MONRI_MERCHANT_KEY_$mode_uppercase");
-        $monri_wspay_form_secret = (string)Tools::getValue("MONRI_WSPAY_FORM_SECRET_$mode_uppercase");
-        $monri_wspay_shop_id = (string)Tools::getValue("MONRI_WSPAY_SHOP_ID_$mode_uppercase");
+        $monri_webpay_merchant_key = (string) Tools::getValue("MONRI_MERCHANT_KEY_$mode_uppercase");
+        $monri_wspay_form_secret = (string) Tools::getValue("MONRI_WSPAY_FORM_SECRET_$mode_uppercase");
+        $monri_wspay_shop_id = (string) Tools::getValue("MONRI_WSPAY_SHOP_ID_$mode_uppercase");
 
         $output = null;
 
         // validating the input
-        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ) {
+        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri WebPay Merchant Key $mode"));
         }
 
@@ -602,12 +550,13 @@ class Monri extends PaymentModule
             return $output . $this->displayForm();
         } else {
             // get post values
-            $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
-            $payment_type = (string)Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
-			$transaction_type = (string)Tools::getValue(MonriConstants::TRANSACTION_TYPE);
+            $mode = (string) Tools::getValue(MonriConstants::KEY_MODE);
+            $payment_type = (string) Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
+            $transaction_type = (string) Tools::getValue(MonriConstants::TRANSACTION_TYPE);
 
             if ($mode != MonriConstants::MODE_PROD && $mode != MonriConstants::MODE_TEST) {
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
+
                 return $output . $this->displayForm();
             } else {
                 $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST, $payment_type);
@@ -617,7 +566,7 @@ class Monri extends PaymentModule
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
                     Configuration::updateValue(MonriConstants::KEY_MODE, $mode);
                     Configuration::updateValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE, $payment_type);
-	                Configuration::updateValue(MonriConstants::TRANSACTION_TYPE, $transaction_type);
+                    Configuration::updateValue(MonriConstants::TRANSACTION_TYPE, $transaction_type);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
                     $output .= $test_validate . $live_validate;
@@ -634,14 +583,14 @@ class Monri extends PaymentModule
     public function displayForm()
     {
         // Get default Language
-        $default_lang = (int)Configuration::get('PS_LANG_DEFAULT');
+        $default_lang = (int) Configuration::get('PS_LANG_DEFAULT');
 
         // Init Fields form array
-        $fields_form[0]['form'] = array(
-            'legend' => array(
+        $fields_form[0]['form'] = [
+            'legend' => [
                 'title' => $this->l('General Settings'),
-                'image' => '../img/admin/edit.gif'
-            ),
+                'image' => '../img/admin/edit.gif',
+            ],
             'input' => [
                 [
                     'type' => 'text',
@@ -650,7 +599,7 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
-                    'hint' => $this->l('If you don\'t know your test merchant key please contact support@monri.com')
+                    'hint' => $this->l('If you don\'t know your test merchant key please contact support@monri.com'),
                 ],
                 [
                     'type' => 'text',
@@ -659,7 +608,7 @@ class Monri extends PaymentModule
                     'size' => 20,
                     'required' => true,
                     'lang' => false,
-                    'hint' => $this->l('If you don\'t know your production merchant key please contact support@monri.com')
+                    'hint' => $this->l('If you don\'t know your production merchant key please contact support@monri.com'),
                 ],
                 [
                     'type' => 'radio',
@@ -670,15 +619,15 @@ class Monri extends PaymentModule
                         [
                             'id' => MonriConstants::MODE_PROD,
                             'value' => MonriConstants::MODE_PROD,
-                            'label' => $this->l('Production')
+                            'label' => $this->l('Production'),
                         ],
                         [
                             'id' => MonriConstants::MODE_TEST,
                             'value' => MonriConstants::MODE_TEST,
-                            'label' => $this->l('Test')
-                        ]
+                            'label' => $this->l('Test'),
+                        ],
                     ],
-                    'required' => true
+                    'required' => true,
                 ],
                 [
                     'type' => 'text',
@@ -686,7 +635,7 @@ class Monri extends PaymentModule
                     'name' => MonriConstants::MONRI_AUTHENTICITY_TOKEN_TEST,
                     'size' => 20,
                     'required' => false,
-                    'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
+                    'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com'),
                 ],
                 [
                     'type' => 'text',
@@ -694,87 +643,87 @@ class Monri extends PaymentModule
                     'name' => MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD,
                     'size' => 20,
                     'required' => false,
-                    'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com')
+                    'hint' => $this->l('If you don\'t know your Authenticity-Token please contact support@monri.com'),
                 ],
                 [
-                'type' => 'radio',
-                'label' => $this->l('Payment gateway service'),
-                'name' => MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE,
-                'class' => 't',
-                'values' => [
-                [
+                    'type' => 'radio',
+                    'label' => $this->l('Payment gateway service'),
+                    'name' => MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE,
+                    'class' => 't',
+                    'values' => [
+                        [
                             'id' => MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY,
                             'value' => MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY,
-                            'label' => $this->l('Monri WebPay')
-                ],
-                [
+                            'label' => $this->l('Monri WebPay'),
+                        ],
+                        [
                             'id' => MonriConstants::PAYMENT_TYPE_MONRI_WSPAY,
                             'value' => MonriConstants::PAYMENT_TYPE_MONRI_WSPAY,
-                            'label' => $this->l('Monri WSPay')
-                ]
-                ],
-                'required' => true
-                ],
-	            [
-		            'type' => 'radio',
-		            'label' => $this->l('Transaction type'),
-		            'name' => MonriConstants::TRANSACTION_TYPE,
-		            'class' => 't',
-		            'values' => [
-			            [
-				            'id' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
-				            'value' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
-				            'label' => $this->l('Authorize')
-			            ],
-			            [
-				            'id' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
-				            'value' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
-				            'label' => $this->l('Capture')
-			            ]
-		            ],
-		            'required' => true,
-		            'hint' => $this->l('Needs to be agreed with Monri WSPay')
-	            ],
-                [
-                'type' => 'text',
-                'label' => $this->l('Secret key for Monri WSPay Test'),
-                'name' => MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST,
-                'size' => 20,
-                'required' => false,
-                'hint' => $this->l('If you don\'t know your secret key please contact wspay@wspay.info')
+                            'label' => $this->l('Monri WSPay'),
+                        ],
+                    ],
+                    'required' => true,
                 ],
                 [
-                'type' => 'text',
-                'label' => $this->l('Secret key for Monri WSPay Prod'),
-                'name' => MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD,
-                'size' => 20,
-                'required' => false,
-                'hint' => $this->l('If you don\'t know your secret key please contact wspay@wspay.info')
+                    'type' => 'radio',
+                    'label' => $this->l('Transaction type'),
+                    'name' => MonriConstants::TRANSACTION_TYPE,
+                    'class' => 't',
+                    'values' => [
+                        [
+                            'id' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
+                            'value' => MonriConstants::TRANSACTION_TYPE_AUTHORIZE,
+                            'label' => $this->l('Authorize'),
+                        ],
+                        [
+                            'id' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
+                            'value' => MonriConstants::TRANSACTION_TYPE_CAPTURE,
+                            'label' => $this->l('Capture'),
+                        ],
+                    ],
+                    'required' => true,
+                    'hint' => $this->l('Needs to be agreed with Monri WSPay'),
                 ],
                 [
-                'type' => 'text',
-                'label' => $this->l('Monri WSPay shop id for Test'),
-                'name' => MonriConstants::MONRI_WSPAY_SHOP_ID_TEST,
-                'size' => 20,
-                'required' => true,
-                'lang' => false,
-                'hint' => $this->l('If you don\'t know your test shop id please contact wspay@wspay.info')
+                    'type' => 'text',
+                    'label' => $this->l('Secret key for Monri WSPay Test'),
+                    'name' => MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('If you don\'t know your secret key please contact wspay@wspay.info'),
                 ],
                 [
-                'type' => 'text',
-                'label' => $this->l('Monri WSPay shop id for Prod'),
-                'name' => MonriConstants::MONRI_WSPAY_SHOP_ID_PROD,
-                'size' => 20,
-                'required' => true,
-                'lang' => false,
-                'hint' => $this->l('If you don\'t know your production shop id please contact wspay@wspay.info')
+                    'type' => 'text',
+                    'label' => $this->l('Secret key for Monri WSPay Prod'),
+                    'name' => MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD,
+                    'size' => 20,
+                    'required' => false,
+                    'hint' => $this->l('If you don\'t know your secret key please contact wspay@wspay.info'),
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Monri WSPay shop id for Test'),
+                    'name' => MonriConstants::MONRI_WSPAY_SHOP_ID_TEST,
+                    'size' => 20,
+                    'required' => true,
+                    'lang' => false,
+                    'hint' => $this->l('If you don\'t know your test shop id please contact wspay@wspay.info'),
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Monri WSPay shop id for Prod'),
+                    'name' => MonriConstants::MONRI_WSPAY_SHOP_ID_PROD,
+                    'size' => 20,
+                    'required' => true,
+                    'lang' => false,
+                    'hint' => $this->l('If you don\'t know your production shop id please contact wspay@wspay.info'),
                 ],
             ],
-            'submit' => array(
+            'submit' => [
                 'title' => $this->l('Save'),
-                'class' => 'btn btn-default pull-right'
-            )
-        );
+                'class' => 'btn btn-default pull-right',
+            ],
+        ];
 
         $helper = new HelperForm();
 
@@ -793,33 +742,32 @@ class Monri extends PaymentModule
         $helper->show_toolbar = true; // false -> remove toolbar
         $helper->toolbar_scroll = true; // yes - > Toolbar is always visible on the top of the screen.
         $helper->submit_action = 'submit' . $this->name;
-        $helper->toolbar_btn = array(
-            'save' => array(
+        $helper->toolbar_btn = [
+            'save' => [
                 'desc' => $this->l('Save'),
-                'href' => AdminController::$currentIndex . '&configure=' . $this->name . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules')
-            ),
-            'back' => array(
+                'href' => AdminController::$currentIndex . '&configure=' . $this->name . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+            ],
+            'back' => [
                 'href' => AdminController::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminModules'),
-                'desc' => $this->l('Back to list')
-            )
-        );
+                'desc' => $this->l('Back to list'),
+            ],
+        ];
 
         if (Tools::isSubmit('submit' . $this->name)) {
             // get settings from post because post can give errors and you want to keep values
-            $merchant_key_live = (string)Tools::getValue(MonriConstants::MONRI_MERCHANT_KEY_PROD);
-            $merchant_authenticity_token_live = (string)Tools::getValue(MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD);
+            $merchant_key_live = (string) Tools::getValue(MonriConstants::MONRI_MERCHANT_KEY_PROD);
+            $merchant_authenticity_token_live = (string) Tools::getValue(MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD);
 
-            $mode = (string)Tools::getValue(MonriConstants::KEY_MODE);
+            $mode = (string) Tools::getValue(MonriConstants::KEY_MODE);
 
-            $merchant_key_test = (string)Tools::getValue(MonriConstants::MONRI_MERCHANT_KEY_TEST);
-            $merchant_authenticity_token_test = (string)Tools::getValue(MonriConstants::MONRI_AUTHENTICITY_TOKEN_TEST);
-            $monri_wspay_form_secret_test = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
-            $monri_wspay_form_secret_prod = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD);
-            $payment_gateway_service_type = (string)Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
-            $monri_wspay_shop_id_test = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
-            $monri_wspay_shop_id_prod = (string)Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_PROD);
-			$transaction_type = (string)Tools::getValue(MonriConstants::TRANSACTION_TYPE);
-
+            $merchant_key_test = (string) Tools::getValue(MonriConstants::MONRI_MERCHANT_KEY_TEST);
+            $merchant_authenticity_token_test = (string) Tools::getValue(MonriConstants::MONRI_AUTHENTICITY_TOKEN_TEST);
+            $monri_wspay_form_secret_test = (string) Tools::getValue(MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
+            $monri_wspay_form_secret_prod = (string) Tools::getValue(MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD);
+            $payment_gateway_service_type = (string) Tools::getValue(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
+            $monri_wspay_shop_id_test = (string) Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
+            $monri_wspay_shop_id_prod = (string) Tools::getValue(MonriConstants::MONRI_WSPAY_SHOP_ID_PROD);
+            $transaction_type = (string) Tools::getValue(MonriConstants::TRANSACTION_TYPE);
         } else {
             $merchant_key_live = Configuration::get(MonriConstants::MONRI_MERCHANT_KEY_PROD);
             $merchant_authenticity_token_live = Configuration::get(MonriConstants::MONRI_AUTHENTICITY_TOKEN_PROD);
@@ -833,7 +781,7 @@ class Monri extends PaymentModule
             $payment_gateway_service_type = Configuration::get(MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE);
             $monri_wspay_shop_id_test = Configuration::get(MonriConstants::MONRI_WSPAY_SHOP_ID_TEST);
             $monri_wspay_shop_id_prod = Configuration::get(MonriConstants::MONRI_WSPAY_SHOP_ID_PROD);
-	        $transaction_type = Configuration::get(MonriConstants::TRANSACTION_TYPE);
+            $transaction_type = Configuration::get(MonriConstants::TRANSACTION_TYPE);
         }
 
         // Load current value
@@ -848,7 +796,7 @@ class Monri extends PaymentModule
         $helper->fields_value[MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE] = $payment_gateway_service_type;
         $helper->fields_value[MonriConstants::MONRI_WSPAY_SHOP_ID_TEST] = $monri_wspay_shop_id_test;
         $helper->fields_value[MonriConstants::MONRI_WSPAY_SHOP_ID_PROD] = $monri_wspay_shop_id_prod;
-	    $helper->fields_value[MonriConstants::TRANSACTION_TYPE] = $transaction_type;
+        $helper->fields_value[MonriConstants::TRANSACTION_TYPE] = $transaction_type;
 
         return $helper->generateForm($fields_form);
     }
@@ -871,30 +819,34 @@ class Monri extends PaymentModule
             MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST,
             MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD,
             MonriConstants::PAYMENT_GATEWAY_SERVICE_TYPE,
-	        MonriConstants::TRANSACTION_TYPE
+            MonriConstants::TRANSACTION_TYPE,
         ];
 
         $db = Db::getInstance();
-        /**
- * @noinspection SqlWithoutWhere SqlResolve 
-*/
+
+        /*
+         * @noinspection SqlWithoutWhere SqlResolve
+         */
         return $db->execute('DELETE FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` IN ("' . implode('", "', $names) . '") ');
     }
 
     public static function getMonriWebPayMerchantKey()
     {
         $mode = Configuration::get(MonriConstants::KEY_MODE);
+
         return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_MERCHANT_KEY_PROD : MonriConstants::MONRI_MERCHANT_KEY_TEST);
     }
 
     public static function getMonriWSPaySecretKey()
     {
         $mode = Configuration::get(MonriConstants::KEY_MODE);
+
         return Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST);
     }
 
-	public static function getMonriTransactionStateId() {
-		// 2 is for capture while 17 is for authorize
-		return (Configuration::get(MonriConstants::TRANSACTION_TYPE) === 'capture') ? 2 : 17;
-	}
+    public static function getMonriTransactionStateId()
+    {
+        // 2 is for capture while 17 is for authorize
+        return (Configuration::get(MonriConstants::TRANSACTION_TYPE) === 'capture') ? 2 : 17;
+    }
 }

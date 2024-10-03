@@ -24,7 +24,6 @@
 *  International Registered Trademark & Property of PrestaShop SA
 */
 
-
 class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 {
     /**
@@ -33,61 +32,60 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         try {
-            PrestaShopLogger::addLog("Response data: " . ( print_r($_GET, true) ));
-            $success       = ( Tools::getValue('Success') && Tools::getValue('Success') === '1' ) ? '1' : '0';
+            PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
+            $success = (Tools::getValue('Success') && Tools::getValue('Success') === '1') ? '1' : '0';
             $approval_code = Tools::getValue('ApprovalCode', '');
-            $trx_authorized = ( $success === '1' ) && ! empty($approval_code);
+            $trx_authorized = ($success === '1') && !empty($approval_code);
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
-	        $mode = Configuration::get(MonriConstants::KEY_MODE);
+            $mode = Configuration::get(MonriConstants::KEY_MODE);
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-				return $this->setErrorTemplate('Invalid payment option or invalid context.');
+                return $this->setErrorTemplate('Invalid payment option or invalid context.');
             }
 
-            if (! Tools::getValue('ShoppingCartID')) {
-	            return $this->setErrorTemplate('Shopping cart ID is missing.');
+            if (!Tools::getValue('ShoppingCartID')) {
+                return $this->setErrorTemplate('Shopping cart ID is missing.');
             }
-	        $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('ShoppingCartID'), 2) : Tools::getValue('ShoppingCartID');
+            $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('ShoppingCartID'), 2) : Tools::getValue('ShoppingCartID');
 
             if (empty($cart_id)) {
-	            return $this->setErrorTemplate('Invalid shopping cart ID.');
+                return $this->setErrorTemplate('Invalid shopping cart ID.');
             }
 
             if (!$this->validateReturn() || !$trx_authorized) {
-	            return $this->setErrorTemplate('Failed to validate response.');
+                return $this->setErrorTemplate('Failed to validate response.');
             }
 
             $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
-	            return $this->setErrorTemplate('Order with this order id already exists.');
+                return $this->setErrorTemplate('Order with this order id already exists.');
             }
             $cart = new Cart($cart_id);
 
             $trx_fields = [
-	            'CustomerFirstname',
-	            'CustomerSurname',
-	            'CustomerAddress',
-	            'CustomerCountry',
-	            'CustmerZIP',
-	            'CustomerCity',
-	            'CustomerEmail',
-	            'CustomerPhone',
-	            'ShoppingCartID',
-	            'Lang',
-	            'DateTime',
-	            'Amount',
-	            'ECI',
-	            'STAN',
-	            'WsPayOrderId',
-	            'PaymentType',
-	            'CreditCardNumber',
-	            'PaymentPlan',
-	            'Success',
-	            'ApprovalCode',
-	            'ErrorMessage'
+                'CustomerFirstname',
+                'CustomerSurname',
+                'CustomerAddress',
+                'CustomerCountry',
+                'CustmerZIP',
+                'CustomerCity',
+                'CustomerEmail',
+                'CustomerPhone',
+                'ShoppingCartID',
+                'Lang',
+                'DateTime',
+                'Amount',
+                'ECI',
+                'STAN',
+                'WsPayOrderId',
+                'PaymentType',
+                'CreditCardNumber',
+                'PaymentPlan',
+                'Success',
+                'ApprovalCode',
+                'ErrorMessage',
             ];
-
 
             $extra_vars = [];
 
@@ -102,14 +100,14 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             }
 
             $currency_id = $cart->id_currency;
-            $customer = new \Customer($cart->id_customer);
-            $amount = (float) str_replace(",", ".", Tools::getValue('Amount'));
-			$id_order_state = Monri::getMonriTransactionStateId();
+            $customer = new Customer($cart->id_customer);
+            $amount = (float) str_replace(',', '.', Tools::getValue('Amount'));
+            $id_order_state = Monri::getMonriTransactionStateId();
 
             // Presta shop creates order only on success redirect
             $this->module->validateOrder(
                 $cart->id,
-	            $id_order_state,
+                $id_order_state,
                 $amount,
                 $this->module->displayName,
                 null,
@@ -119,7 +117,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 $customer->secure_key
             );
 
-            \Tools::redirect(
+            Tools::redirect(
                 $this->context->link->getPageLink(
                     'order-confirmation',
                     $this->ssl,
@@ -135,6 +133,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $this->setTemplate($error_file_template);
         }
     }
+
     /**
      * Check if WSPay response is valid
      *
@@ -142,15 +141,13 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
      */
     private function validateReturn()
     {
-
         if (!Tools::getValue('Success') || !Tools::getValue('ShoppingCartID')) {
             return false;
         }
-        $order_id      = Tools::getValue('ShoppingCartID');
-        $digest        = Tools::getValue('Signature');
-        $success       = (( Tools::getValue('Success') ) && Tools::getValue('Success') === '1' ) ? '1' : '0';
-        $approval_code = Tools::getValue('ApprovalCode') ? Tools::getValue('ApprovalCode'): '';
-
+        $order_id = Tools::getValue('ShoppingCartID');
+        $digest = Tools::getValue('Signature');
+        $success = (Tools::getValue('Success') && Tools::getValue('Success') === '1') ? '1' : '0';
+        $approval_code = Tools::getValue('ApprovalCode') ? Tools::getValue('ApprovalCode') : '';
 
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $shop_id = Configuration::get(
@@ -162,16 +159,16 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST
         );
 
-        $digest_parts = array(
-	        $shop_id,
-	        $secret_key,
-	        $order_id,
-	        $secret_key,
-	        $success,
-	        $secret_key,
-	        $approval_code,
-	        $secret_key,
-        );
+        $digest_parts = [
+            $shop_id,
+            $secret_key,
+            $order_id,
+            $secret_key,
+            $success,
+            $secret_key,
+            $approval_code,
+            $secret_key,
+        ];
         $check_digest = hash('sha512', implode('', $digest_parts));
 
         return hash_equals($check_digest, $digest);
@@ -213,10 +210,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
         return false;
     }
 
-	private function setErrorTemplate($message) {
-		$this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
-		$this->context->smarty->assign('error_message', $message);
-		PrestaShopLogger::addLog($message);
-		$this->setTemplate('module:monri/views/templates/front/error.tpl');
-	}
+    private function setErrorTemplate($message)
+    {
+        $this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
+        $this->context->smarty->assign('error_message', $message);
+        PrestaShopLogger::addLog($message);
+        $this->setTemplate('module:monri/views/templates/front/error.tpl');
+    }
 }

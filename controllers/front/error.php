@@ -31,7 +31,7 @@ class MonriErrorModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-        PrestaShopLogger::addLog("Response data: " . ( print_r($_GET, true) ));
+        PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
         $this->context->smarty->assign('shopping_cart_id', Tools::getValue('ShoppingCartID'));
         $this->context->smarty->assign('error_codes', Tools::getValue('ErrorCodes'));
         $this->setTemplate('module:monri/views/templates/front/error.tpl');

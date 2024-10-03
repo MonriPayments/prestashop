@@ -24,7 +24,6 @@
 *  International Registered Trademark & Property of PrestaShop SA
 */
 
-
 class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
 {
     /**
@@ -32,48 +31,46 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-
         if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-            //todo: add error message for customer
+            // todo: add error message for customer
             Tools::redirect('index.php?controller=order&step=1');
         }
 
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $secret_key = Monri::getMonriWSPaySecretKey();
-        $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
+        $amount = '' . ((int) ((float) $cart->getOrderTotal() * 100));
         $form_url = $mode == MonriConstants::MODE_PROD ?
             'https://form.wspay.biz/authorization.aspx' : 'https://formtest.wspay.biz/authorization.aspx';
 
         $prefix = Tools::getValue('monri_module_name', 'monri');
 
         $from_post = [
-	        'Version',
-	        'ShopID',
-	        'ShoppingCartID',
-	        'Lang',
-	        'TotalAmount',
-	        'ReturnUrl',
-	        'CancelUrl',
-	        'ReturnErrorURL',
-	        'CustomerFirstName',
-	        'CustomerLastName',
-	        'CustomerAddress',
-	        'CustomerCity',
-	        'CustomerZIP',
-	        'CustomerCountry',
-	        'CustomerPhone',
-	        'CustomerEmail',
+            'Version',
+            'ShopID',
+            'ShoppingCartID',
+            'Lang',
+            'TotalAmount',
+            'ReturnUrl',
+            'CancelUrl',
+            'ReturnErrorURL',
+            'CustomerFirstName',
+            'CustomerLastName',
+            'CustomerAddress',
+            'CustomerCity',
+            'CustomerZIP',
+            'CustomerCountry',
+            'CustomerPhone',
+            'CustomerEmail',
         ];
-
 
         $inputs = [];
 
         foreach ($from_post as $item) {
             $inputs[$item] = [
-            'name' => $item,
-            'type' => 'hidden',
-            'value' => Tools::getValue($prefix . '_' . $item)
+                'name' => $item,
+                'type' => 'hidden',
+                'value' => Tools::getValue($prefix . '_' . $item),
             ];
         }
 
@@ -81,12 +78,12 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $shop_id = $inputs['ShopID']['value'];
 
         $inputs['Signature'] = [
-	        'name' => 'Signature',
-	        'type' => 'hidden',
-	        'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
+            'name' => 'Signature',
+            'type' => 'hidden',
+            'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
         ];
 
-        $this->context->smarty->assign("monri_inputs", $inputs);
+        $this->context->smarty->assign('monri_inputs', $inputs);
 
         $this->context->smarty->assign('action', $form_url);
 
