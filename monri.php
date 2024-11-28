@@ -175,6 +175,8 @@ class Monri extends PaymentModule
         $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', [], true);
         $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', [], true);
         $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
+		$transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
+		'purchase' : 'authorize';
 
         $address = new Address($cart->id_address_delivery);
 
@@ -247,7 +249,7 @@ class Monri extends PaymentModule
             'transaction_type' => [
                 'name' => 'transaction_type',
                 'type' => 'hidden',
-                'value' => 'purchase',
+                'value' => $transaction_type,
             ],
             'number_of_installments' => [
                 'name' => 'number_of_installments',
@@ -540,10 +542,20 @@ class Monri extends PaymentModule
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
 
                 return $output . $this->displayForm();
-            } else {
-                $test_validate = $this->validateConfiguration(MonriConstants::MODE_TEST, $payment_type);
-                $live_validate = $this->validateConfiguration(MonriConstants::MODE_PROD, $payment_type);
-                if ($test_validate == null && $live_validate == null) {
+            }
+			else if ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
+				$output .= $this->displayError($this->l("Invalid Payment Service, expected: Monri WebPay or Monri WSPay got '$payment_type'"));
+
+				return $output . $this->displayForm();
+			}
+			else if ($transaction_type != MonriConstants::TRANSACTION_TYPE_CAPTURE && $transaction_type != MonriConstants::TRANSACTION_TYPE_AUTHORIZE) {
+				$output .= $this->displayError($this->l("Invalid Payment Service, expected: capture or authorize got '$transaction_type'"));
+
+				return $output . $this->displayForm();
+			}
+			else {
+				$validate = $this->validateConfiguration($mode, $payment_type);
+                if (!$validate) {
                     $this->updateConfiguration(MonriConstants::MODE_PROD);
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
                     Configuration::updateValue(MonriConstants::KEY_MODE, $mode);
@@ -551,7 +563,7 @@ class Monri extends PaymentModule
                     Configuration::updateValue(MonriConstants::MONRI_TRANSACTION_TYPE, $transaction_type);
                     $output .= $this->displayConfirmation($this->l('Settings updated'));
                 } else {
-                    $output .= $test_validate . $live_validate;
+                    $output .= $validate;
                 }
             }
         }
