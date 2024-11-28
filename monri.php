@@ -503,29 +503,17 @@ class Monri extends PaymentModule
         $mode_uppercase = strtoupper($mode);
         $monri_webpay_authenticity_token = Tools::getValue("MONRI_AUTHENTICITY_TOKEN_$mode_uppercase");
         $monri_webpay_merchant_key = (string) Tools::getValue("MONRI_MERCHANT_KEY_$mode_uppercase");
-        $monri_wspay_form_secret = (string) Tools::getValue("MONRI_WSPAY_FORM_SECRET_$mode_uppercase");
-        $monri_wspay_shop_id = (string) Tools::getValue("MONRI_WSPAY_SHOP_ID_$mode_uppercase");
 
         $output = null;
 
         // validating the input
         if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY) {
-            $output .= $this->displayError($this->l("Invalid Configuration value for Monri WebPay Merchant Key $mode"));
+            $output .= $this->displayError($this->l("Invalid Configuration value for Monri Merchant Key/Shop ID $mode"));
         }
 
         // validating the input
         if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY) {
-            $output .= $this->displayError($this->l("Invalid Configuration value for Monri WebPay Api Key $mode"));
-        }
-
-        // validating the input
-        if ((empty($monri_wspay_form_secret) || !Validate::isGenericName($monri_wspay_form_secret)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
-            $output .= $this->displayError($this->l("Invalid Configuration value for Monri WSPay secret key $mode"));
-        }
-
-        // validating the input
-        if ((empty($monri_wspay_shop_id) || !Validate::isGenericName($monri_wspay_shop_id)) && $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
-            $output .= $this->displayError($this->l("Invalid Configuration value for Monri WSPay shop id $mode"));
+            $output .= $this->displayError($this->l("Invalid Configuration value for Monri Api Key/Secret $mode"));
         }
 
         return $output;
@@ -597,7 +585,7 @@ class Monri extends PaymentModule
                 ],
                 [
                     'type' => 'text',
-                    'label' => $this->l('Monri WebPay merchant key/shop id for Production'),
+                    'label' => $this->l('Monri merchant key/shop id for Production'),
                     'name' => MonriConstants::KEY_MERCHANT_KEY_PROD,
                     'size' => 20,
                     'required' => true,
@@ -625,7 +613,7 @@ class Monri extends PaymentModule
                 ],
                 [
                     'type' => 'text',
-                    'label' => $this->l('Monri WebPay Authenticity token/secret for Test'),
+                    'label' => $this->l('Monri Authenticity token/secret for Test'),
                     'name' => MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
                     'size' => 20,
                     'required' => false,
@@ -633,7 +621,7 @@ class Monri extends PaymentModule
                 ],
                 [
                     'type' => 'text',
-                    'label' => $this->l('Monri WebPay Authenticity token/secret for Prod'),
+                    'label' => $this->l('Monri Authenticity token/secret for Prod'),
                     'name' => MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
                     'size' => 20,
                     'required' => false,

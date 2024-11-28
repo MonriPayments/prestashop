@@ -152,11 +152,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $shop_id = Configuration::get(
             $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_WSPAY_SHOP_ID_PROD : MonriConstants::MONRI_WSPAY_SHOP_ID_TEST
+            MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST
         );
         $secret_key = Configuration::get(
             $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_WSPAY_FORM_SECRET_PROD : MonriConstants::MONRI_WSPAY_FORM_SECRET_TEST
+            MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
         );
 
         $digest_parts = [
