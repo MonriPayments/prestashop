@@ -113,7 +113,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 
             // TODO: check if already approved
             $this->module->validateOrder(
-                $cart->id, 2, $amount/100, $this->module->displayName, null, $extra_vars,
+                $cart->id, Monri::getMonriTransactionStateId(), $amount/100, $this->module->displayName, null, $extra_vars,
                 (int)$currencyId, false, $customer->secure_key
             );
 
