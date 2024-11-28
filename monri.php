@@ -662,6 +662,7 @@ class Monri extends PaymentModule
                     'type' => 'radio',
                     'label' => $this->l('Transaction type'),
                     'name' => MonriConstants::MONRI_TRANSACTION_TYPE,
+                    'desc'    => $this->l('Needs to be set to action arranged with Monri for gateway to function properly.'),
                     'class' => 't',
                     'values' => [
                         [
