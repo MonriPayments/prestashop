@@ -104,6 +104,10 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $amount = (float) str_replace(',', '.', Tools::getValue('Amount'));
             $id_order_state = Monri::getMonriTransactionStateId();
 
+	        if ($amount != $cart->getCartTotalPrice()) {
+		        return $this->setErrorTemplate('Invalid amount.');
+	        }
+
             // Presta shop creates order only on success redirect
             $this->module->validateOrder(
                 $cart->id,

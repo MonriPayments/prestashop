@@ -110,7 +110,10 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if(isset($_GET['original_amount'])) {
                 $this->applyDiscount($cart, $amount, intval($_GET['original_amount']));
             }
-
+			$cartAmount = (int) $cart->getCartTotalPrice() * 100;
+	        if ($amount != $cartAmount) {
+		        return $this->setErrorTemplate('Invalid amount.');
+	        }
             // TODO: check if already approved
             $this->module->validateOrder(
                 $cart->id, Monri::getMonriTransactionStateId(), $amount/100, $this->module->displayName, null, $extra_vars,
@@ -184,4 +187,12 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             return ":$port";
         }
     }
+
+	private function setErrorTemplate($message)
+	{
+		$this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
+		$this->context->smarty->assign('error_message', $message);
+		PrestaShopLogger::addLog($message);
+		$this->setTemplate('module:monri/views/templates/front/error.tpl');
+	}
 }
