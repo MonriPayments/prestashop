@@ -110,15 +110,19 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if(isset($_GET['original_amount'])) {
                 $this->applyDiscount($cart, $amount, intval($_GET['original_amount']));
             }
-			$cartAmount = (int) $cart->getCartTotalPrice() * 100;
-	        if ($amount != $cartAmount) {
-		        return $this->setErrorTemplate('Invalid amount.');
-	        }
+
+	        $cartAmount = (int) $cart->getCartTotalPrice() * 100;
             // TODO: check if already approved
             $this->module->validateOrder(
                 $cart->id, Monri::getMonriTransactionStateId(), $amount/100, $this->module->displayName, null, $extra_vars,
                 (int)$currencyId, false, $customer->secure_key
             );
+
+	        if ($amount != $cartAmount) {
+		        $order = Order::getByCartId($cart->id);
+		        $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
+		        return $this->setErrorTemplate('Invalid amount.');
+	        }
 
             \Tools::redirect(
                 $this->context->link->getPageLink(
