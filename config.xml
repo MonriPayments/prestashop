@@ -2,12 +2,11 @@
 <module>
     <name>monri</name>
     <displayName><![CDATA[Monri]]></displayName>
-    <version><![CDATA[1.0.0]]></version>
+    <version><![CDATA[1.2.0]]></version>
     <description><![CDATA[Accept all payments offered by Monri]]></description>
     <author><![CDATA[Monri]]></author>
     <tab><![CDATA[payments_gateways]]></tab>
-    <confirmUninstall><![CDATA[Are you sure you want to uninstall?]]></confirmUninstall>
+	<confirmUninstall><![CDATA[Are you sure you want to uninstall?]]></confirmUninstall>
     <is_configurable>1</is_configurable>
     <need_instance>1</need_instance>
-    <limited_countries></limited_countries>
 </module>
