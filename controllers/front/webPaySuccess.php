@@ -46,7 +46,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if (!$this->validateReturn()) {
                 return $this->setErrorTemplate('Failed to validate response.');
             }
-			if ($response_code != '0001')
+			if ($response_code != '0000')
 			{
 				return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
 			}

@@ -52,9 +52,6 @@ class MonriCancelModuleFrontController extends ModuleFrontController
             exit($this->module->l('This payment method is not available.', 'validation'));
         }
 
-        $this->context->smarty->assign([
-            'params' => $_REQUEST,
-        ]);
 		Tools::redirect('index.php?controller=cart&action=show');
     }
 }
