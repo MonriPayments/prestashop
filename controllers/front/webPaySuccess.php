@@ -36,6 +36,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         try {
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
+	        $response_code = Tools::getValue('response_code');
             $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
@@ -44,6 +45,10 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if (!$this->validateReturn()) {
                 return $this->setErrorTemplate('Failed to validate response.');
             }
+			if ($response_code != '0000')
+			{
+				return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
+			}
             $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
