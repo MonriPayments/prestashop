@@ -23,10 +23,10 @@ class MonriConstants
     const MONRI_WSPAY_VERSION = '2.0';
 
     const KEY_MODE = 'MONRI_MODE';
-	const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
-	const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
-	const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
-	const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
+    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
+    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
+    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
+    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
 
     const KEY_MIN_INSTALLMENTS = 'KEY_MIN_INSTALLMENTS';
     const KEY_MAX_INSTALLMENTS = 'KEY_MAX_INSTALLMENTS';
@@ -175,8 +175,8 @@ class Monri extends PaymentModule
         $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', [], true);
         $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', [], true);
         $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
-		$transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
-		'purchase' : 'authorize';
+        $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
+        'purchase' : 'authorize';
 
         $address = new Address($cart->id_address_delivery);
 
@@ -542,19 +542,16 @@ class Monri extends PaymentModule
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
 
                 return $output . $this->displayForm();
-            }
-			else if ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
-				$output .= $this->displayError($this->l("Invalid Payment Service, expected: Monri WebPay or Monri WSPay got '$payment_type'"));
+            } elseif ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY) {
+                $output .= $this->displayError($this->l("Invalid Payment Service, expected: Monri WebPay or Monri WSPay got '$payment_type'"));
 
-				return $output . $this->displayForm();
-			}
-			else if ($transaction_type != MonriConstants::TRANSACTION_TYPE_CAPTURE && $transaction_type != MonriConstants::TRANSACTION_TYPE_AUTHORIZE) {
-				$output .= $this->displayError($this->l("Invalid Payment Service, expected: capture or authorize got '$transaction_type'"));
+                return $output . $this->displayForm();
+            } elseif ($transaction_type != MonriConstants::TRANSACTION_TYPE_CAPTURE && $transaction_type != MonriConstants::TRANSACTION_TYPE_AUTHORIZE) {
+                $output .= $this->displayError($this->l("Invalid Payment Service, expected: capture or authorize got '$transaction_type'"));
 
-				return $output . $this->displayForm();
-			}
-			else {
-				$validate = $this->validateConfiguration($mode, $payment_type);
+                return $output . $this->displayForm();
+            } else {
+                $validate = $this->validateConfiguration($mode, $payment_type);
                 if (!$validate) {
                     $this->updateConfiguration(MonriConstants::MODE_PROD);
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
