@@ -34,6 +34,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         try {
+	        PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
 	        $response_code = Tools::getValue('response_code');
@@ -45,7 +46,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if (!$this->validateReturn()) {
                 return $this->setErrorTemplate('Failed to validate response.');
             }
-			if ($response_code != '0000')
+			if ($response_code != '0001')
 			{
 				return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
 			}
@@ -126,6 +127,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
+	        PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
             $this->setTemplate($error_file_template);
         }
     }
@@ -159,6 +161,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
         $this->context->smarty->assign('error_message', $message);
         PrestaShopLogger::addLog($message);
+	    PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
         $this->setTemplate('module:monri/views/templates/front/error.tpl');
     }
 
