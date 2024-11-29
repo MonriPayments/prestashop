@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -67,8 +68,8 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'tokenize_brands',
             'whitelisted_pan_tokens',
             'custom_attributes',
-	        'cancel_url_override',
-	        'success_url_override'
+            'cancel_url_override',
+            'success_url_override'
         ];
 
 
@@ -101,7 +102,6 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
         return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
-
     }
 
     private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
