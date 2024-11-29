@@ -90,7 +90,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $this->applyDiscount($cart, $amount, intval($_GET['original_amount']));
             }
 
-	        $cartAmount = (int) $cart->getCartTotalPrice() * 100;
+	        $cartAmount = (int) ($cart->getCartTotalPrice() * 100);
             // TODO: check if already approved
             $this->module->validateOrder(
                 $cart->id, Monri::getMonriTransactionStateId(), $amount/100, $this->module->displayName, null, $extra_vars,
