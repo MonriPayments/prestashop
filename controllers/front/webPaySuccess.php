@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -32,98 +33,107 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-		try {
-			$error_file_template = 'module:monri/views/templates/front/error.tpl';
-			$mode = Configuration::get(MonriConstants::KEY_MODE);
-			$cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
+        try {
+            $error_file_template = 'module:monri/views/templates/front/error.tpl';
+            $mode = Configuration::get(MonriConstants::KEY_MODE);
+            $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
 
-			if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-				return $this->setErrorTemplate('Invalid payment option or invalid context.');
-			}
-			if (!$this->validateReturn()) {
-				return $this->setErrorTemplate('Failed to validate response.');
-			}
-			$cart_id = (int) $cart_id[0];
-			$order = Order::getByCartId($cart_id);
-			if ($order) {
-				return $this->setErrorTemplate('Order with this order id already exists.');
-			}
-			$cart = new Cart($cart_id);
+            if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+                return $this->setErrorTemplate('Invalid payment option or invalid context.');
+            }
+            if (!$this->validateReturn()) {
+                return $this->setErrorTemplate('Failed to validate response.');
+            }
+            $cart_id = (int) $cart_id[0];
+            $order = Order::getByCartId($cart_id);
+            if ($order) {
+                return $this->setErrorTemplate('Order with this order id already exists.');
+            }
+            $cart = new Cart($cart_id);
 
-			$trx_fields = ['acquirer',
-				'amount',
-				'approval_code',
-				'authentication',
-				'cc_type',
-				'ch_full_name',
-				'currency',
-				'custom_params',
-				'enrollment',
-				'issuer',
-				'language',
-				'masked_pan',
-				'number_of_installments',
-				'order_number',
-				'response_code',
-				'digest',
-				'pan_token',
-				'original_amount'
-			];
+            $trx_fields = ['acquirer',
+                'amount',
+                'approval_code',
+                'authentication',
+                'cc_type',
+                'ch_full_name',
+                'currency',
+                'custom_params',
+                'enrollment',
+                'issuer',
+                'language',
+                'masked_pan',
+                'number_of_installments',
+                'order_number',
+                'response_code',
+                'digest',
+                'pan_token',
+                'original_amount'
+            ];
 
-			$extra_vars = [];
+            $extra_vars = [];
 
-			foreach ($trx_fields as $field) {
-				if(Tools::getValue($field)) {
-					$extra_vars[$field] = Tools::getValue($field);
-				}
-			}
+            foreach ($trx_fields as $field) {
+                if (Tools::getValue($field)) {
+                    $extra_vars[$field] = Tools::getValue($field);
+                }
+            }
 
-			if (isset($extra_vars['order_number'])) {
-				$extra_vars['transaction_id'] = $extra_vars['order_number'];
-			}
+            if (isset($extra_vars['order_number'])) {
+                $extra_vars['transaction_id'] = $extra_vars['order_number'];
+            }
 
-			$currencyId = $cart->id_currency;
-			$customer = new \Customer($cart->id_customer);
-			$amount = intval(Tools::getValue('amount'));
+            $currencyId = $cart->id_currency;
+            $customer = new \Customer($cart->id_customer);
+            $amount = intval(Tools::getValue('amount'));
 
-			if(Tools::getValue('original_amount')) {
-				$this->applyDiscount($cart, $amount, intval(Tools::getValue('original_amount')));
-			}
+            if (Tools::getValue('original_amount')) {
+                $this->applyDiscount($cart, $amount, intval(Tools::getValue('original_amount')));
+            }
 
-			$cartAmount = (int) ($cart->getCartTotalPrice() * 100);
-			// TODO: check if already approved
-			$this->module->validateOrder(
-				$cart->id, Monri::getMonriTransactionStateId(), $amount/100, $this->module->displayName, null, $extra_vars,
-				(int)$currencyId, false, $customer->secure_key
-			);
+            $cartAmount = (int) ($cart->getCartTotalPrice() * 100);
+            // TODO: check if already approved
+            $this->module->validateOrder(
+                $cart->id,
+                Monri::getMonriTransactionStateId(),
+                $amount / 100,
+                $this->module->displayName,
+                null,
+                $extra_vars,
+                (int)$currencyId,
+                false,
+                $customer->secure_key
+            );
 
-			if ($amount != $cartAmount) {
-				$order = Order::getByCartId($cart->id);
-				$order->setCurrentState(Configuration::get('PS_OS_ERROR'));
-				return $this->setErrorTemplate('Invalid amount.');
-			}
+            if ($amount != $cartAmount) {
+                $order = Order::getByCartId($cart->id);
+                $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
+                return $this->setErrorTemplate('Invalid amount.');
+            }
 
-			\Tools::redirect(
-				$this->context->link->getPageLink(
-					'order-confirmation', $this->ssl, null,
-					'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
-				)
-			);
-		}
-		catch (Exception $e) {
-			PrestaShopLogger::addLog($e->getMessage());
-			$this->setTemplate($error_file_template);
-		}
+            \Tools::redirect(
+                $this->context->link->getPageLink(
+                    'order-confirmation',
+                    $this->ssl,
+                    null,
+                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
+                )
+            );
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog($e->getMessage());
+            $this->setTemplate($error_file_template);
+        }
     }
 
-    private function applyDiscount($cart, $amount, $original_amount) {
+    private function applyDiscount($cart, $amount, $original_amount)
+    {
 
         $cart_rule = new CartRule();
         $language_ids = LanguageCore::getIDs(false);
- 
+
         foreach ($language_ids as $language_id) {
-          $cart_rule->name[$language_id] = $this->trans('Unicredit Akcija');
-          $cart_rule->description = $this->trans('Unicredit akcija - popust 15%');
+            $cart_rule->name[$language_id] = $this->trans('Unicredit Akcija');
+            $cart_rule->description = $this->trans('Unicredit akcija - popust 15%');
         }
 
         $now = time();
@@ -133,101 +143,101 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         $cart_rule->partial_use = false;
         $cart_rule->active = true;
         $cart_rule->id_customer = $cart->id_customer;
-        $cart_rule->reduction_amount = ($original_amount - $amount)/100;
+        $cart_rule->reduction_amount = ($original_amount - $amount) / 100;
         $cart_rule->add();
         $cart->addCartRule($cart_rule->id);
     }
 
 
-	private function setErrorTemplate($message)
-	{
-		$this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
-		$this->context->smarty->assign('error_message', $message);
-		PrestaShopLogger::addLog($message);
-		$this->setTemplate('module:monri/views/templates/front/error.tpl');
-	}
+    private function setErrorTemplate($message)
+    {
+        $this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
+        $this->context->smarty->assign('error_message', $message);
+        PrestaShopLogger::addLog($message);
+        $this->setTemplate('module:monri/views/templates/front/error.tpl');
+    }
 
-	/**
-	 * Check if the context is valid
-	 *
-	 * @return bool
-	 */
-	private function checkIfContextIsValid()
-	{
-		return true === Validate::isLoadedObject($this->context->cart)
-		       && true === Validate::isUnsignedInt($this->context->cart->id_customer)
-		       && true === Validate::isUnsignedInt($this->context->cart->id_address_delivery)
-		       && true === Validate::isUnsignedInt($this->context->cart->id_address_invoice);
-	}
+    /**
+     * Check if the context is valid
+     *
+     * @return bool
+     */
+    private function checkIfContextIsValid()
+    {
+        return true === Validate::isLoadedObject($this->context->cart)
+               && true === Validate::isUnsignedInt($this->context->cart->id_customer)
+               && true === Validate::isUnsignedInt($this->context->cart->id_address_delivery)
+               && true === Validate::isUnsignedInt($this->context->cart->id_address_invoice);
+    }
 
-	/**
-	 * Check that this payment option is still available in case the customer changed
-	 * his address just before the end of the checkout process
-	 *
-	 * @return bool
-	 */
-	private function checkIfPaymentOptionIsAvailable()
-	{
-		$modules = Module::getPaymentModules();
+    /**
+     * Check that this payment option is still available in case the customer changed
+     * his address just before the end of the checkout process
+     *
+     * @return bool
+     */
+    private function checkIfPaymentOptionIsAvailable()
+    {
+        $modules = Module::getPaymentModules();
 
-		if (empty($modules)) {
-			return false;
-		}
+        if (empty($modules)) {
+            return false;
+        }
 
-		foreach ($modules as $module) {
-			if (isset($module['name']) && $this->module->name === $module['name']) {
-				return true;
-			}
-		}
+        foreach ($modules as $module) {
+            if (isset($module['name']) && $this->module->name === $module['name']) {
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	/**
-	 * Check if WebPay response is valid
-	 *
-	 * @return bool
-	 */
-	private function validateReturn()
-	{
+    /**
+     * Check if WebPay response is valid
+     *
+     * @return bool
+     */
+    private function validateReturn()
+    {
 
-		if ( !Tools::getValue('digest')  || ! preg_match( '/^[a-f0-9]{128}$/', Tools::getValue('digest') ) ) {
-			return false;
-		}
-		$merchant_key = Monri::getMonriWebPayMerchantKey();
-		$digest = $this->sanitize_hash( Tools::getValue('digest') );
+        if (!Tools::getValue('digest')  || ! preg_match('/^[a-f0-9]{128}$/', Tools::getValue('digest'))) {
+            return false;
+        }
+        $merchant_key = Monri::getMonriWebPayMerchantKey();
+        $digest = $this->sanitizeHash(Tools::getValue('digest'));
 
-		$calculated_url = Tools::getCurrentUrl();
-		$calculated_url = strtok( $calculated_url, '?' );
-		$arr = explode( '?', $_SERVER['REQUEST_URI'] );
+        $calculated_url = Tools::getCurrentUrl();
+        $calculated_url = strtok($calculated_url, '?');
+        $arr = explode('?', $_SERVER['REQUEST_URI']);
 
-		// If there's more than one '?' shift and join with ?, it's special case of having '?' in success url
-		// eg https://test.com/?page_id=6order-recieved?
-		if ( count( $arr ) > 2 ) {
-			array_shift( $arr );
-			$query_string = implode( '?', $arr );
-		} else {
-			$query_string = end( $arr );
-		}
+        // If there's more than one '?' shift and join with ?, it's special case of having '?' in success url
+        // eg https://test.com/?page_id=6order-recieved?
+        if (count($arr) > 2) {
+            array_shift($arr);
+            $query_string = implode('?', $arr);
+        } else {
+            $query_string = end($arr);
+        }
 
-		$calculated_url .= '?' . $query_string;
-		$calculated_url = preg_replace( '/&digest=[^&]*/', '', $calculated_url );
+        $calculated_url .= '?' . $query_string;
+        $calculated_url = preg_replace('/&digest=[^&]*/', '', $calculated_url);
 
-		//generate known digest
-		$check_digest = hash( 'sha512', $merchant_key . $calculated_url );
+        //generate known digest
+        $check_digest = hash('sha512', $merchant_key . $calculated_url);
 
-		return hash_equals( $check_digest, $digest );
+        return hash_equals($check_digest, $digest);
+    }
 
-	}
-
-	/**
-	 * Sanitize hash, only hex digits/letters allowed in lowercase (0-9 and a-f)
-	 *
-	 * @param string $hash
-	 *
-	 * @return string
-	 */
-	public static function sanitize_hash( $hash ) {
-		return (string) preg_replace( '/[^a-f0-9]/', '', $hash );
-	}
+    /**
+     * Sanitize hash, only hex digits/letters allowed in lowercase (0-9 and a-f)
+     *
+     * @param string $hash
+     *
+     * @return string
+     */
+    public static function sanitizeHash($hash)
+    {
+        return (string) preg_replace('/[^a-f0-9]/', '', $hash);
+    }
 }
