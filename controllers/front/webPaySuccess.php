@@ -127,7 +127,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
-	        PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
             $this->setTemplate($error_file_template);
         }
     }
