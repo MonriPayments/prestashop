@@ -45,30 +45,9 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         $parts = explode('_', $_GET['order_number'], 2);
         $cart = new Cart($parts[0]);
 
-        if (false) {
-            $inspect = [
-                'merchant_key' => $merchant_key,
-                'check_digest' => $checkdigest,
-                'digest' => $digest,
-                'same_digest' => $checkdigest == $digest,
-                'full_url' => $full_url,
-                'url' => $url,
-                'port' => $_SERVER['SERVER_PORT'],
-                'server_name' => $_SERVER['SERVER_NAME'],
-                'request_uri' => $_SERVER['REQUEST_URI'],
-                'calculated_url' => $calculated_url,
-                'self' => $_SERVER['PHP_SELF'],
-                'url_parsed' => $url_parsed
-            ];
-            echo '<pre>' . var_export($inspect, true) . '</pre>';
-            die();
-            $cart = $this->context->cart;
-        }
-
         if ($checkdigest != $digest && $status == "approved") {
             $this->setTemplate('module:monri/views/templates/front/error.tpl');
         } else {
-            $total = (float)$cart->getOrderTotal(true, \Cart::BOTH);
 
             $trx_fields = ['acquirer',
                 'amount',
@@ -135,21 +114,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 
     private function applyDiscount($cart, $amount, $original_amount) {
 
-        $inspect = [
-            'card' => $cart,
-            'check_digest' => $checkdigest,
-            'digest' => $digest,
-            'same_digest' => $checkdigest == $digest,
-            'full_url' => $full_url,
-            'url' => $url,
-            'port' => $_SERVER['SERVER_PORT'],
-            'server_name' => $_SERVER['SERVER_NAME'],
-            'request_uri' => $_SERVER['REQUEST_URI'],
-            'calculated_url' => $calculated_url,
-            'self' => $_SERVER['PHP_SELF'],
-            'url_parsed' => $url_parsed
-        ];
-        
         $cart_rule = new CartRule();
         $language_ids = LanguageCore::getIDs(false);
  
