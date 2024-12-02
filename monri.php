@@ -186,7 +186,6 @@ class Monri extends PaymentModule
         $address = new Address($cart->id_address_delivery);
 
         $currency = new Currency($cart->id_currency);
-        $amount = '' . ((int) ((float) $cart->getOrderTotal() * 100));
         $order_number = $cart->id . '_' . time();
 
         $inputs = [
@@ -383,7 +382,6 @@ class Monri extends PaymentModule
         $error_url = $this->context->link->getModuleLink($this->name, 'error', [], true);
 
         $address = new Address($cart->id_address_delivery);
-        $amount = number_format($cart->getOrderTotal(), 2, ',', '');
         $cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time());
 
         $inputs = [
@@ -407,11 +405,6 @@ class Monri extends PaymentModule
                 'name' => 'Lang',
                 'type' => 'hidden',
                 'value' => $language,
-            ],
-            'TotalAmount' => [
-                'name' => 'TotalAmount',
-                'type' => 'hidden',
-                'value' => $amount,
             ],
             'ReturnUrl' => [
                 'name' => 'ReturnUrl',

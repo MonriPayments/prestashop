@@ -40,7 +40,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $secret_key = Monri::getMonriWSPaySecretKey();
-        $amount = '' . ((int) ((float) $cart->getOrderTotal() * 100));
+        $amount = number_format($cart->getOrderTotal(), 2, ',', '');
         $form_url = $mode == MonriConstants::MODE_PROD ?
             MonriConstants::MONRI_WSPAY_PRODUCTION_URL : MonriConstants::MONRI_WSPAY_TEST_URL;
 
@@ -83,6 +83,13 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             'type' => 'hidden',
             'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
         ];
+
+	    $inputs['TotalAmount'] = [
+		    'name' => 'TotalAmount',
+		    'type' => 'hidden',
+		    'value' => $amount
+	    ];
+
 
         $this->context->smarty->assign('monri_inputs', $inputs);
 
