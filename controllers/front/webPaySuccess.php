@@ -114,6 +114,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() * 100, $comp_precision))) {
                 $order = Order::getByCartId($cart->id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
+	            $order->note = "Amount paid and cart amount are not the same.";
+	            $order->save();
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
