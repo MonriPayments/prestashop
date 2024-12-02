@@ -51,7 +51,10 @@ class MonriCancelModuleFrontController extends ModuleFrontController
         if (!$authorized) {
             exit($this->module->l('This payment method is not available.', 'validation'));
         }
-
-		Tools::redirect('index.php?controller=cart&action=show');
+	    Context::getContext()->cookie->__set('redirect_error', 'Your custom error message');
+	    $this->errors[] = "Something went wrong, please check information and try again.";
+	    // todo: add error message for customer
+	    $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+	    $this->redirectWithNotifications($ordersLink);
     }
 }

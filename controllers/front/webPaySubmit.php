@@ -41,8 +41,10 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 	        MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
 
 	    if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+		    $this->errors[] = "Something went wrong, please check information and try again.";
 		    // todo: add error message for customer
-		    Tools::redirect('index.php?controller=order&step=1');
+		    $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+		    $this->redirectWithNotifications($ordersLink);
 	    }
 		$prefix = Tools::getValue('monri_module_name', 'monri');
 
