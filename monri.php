@@ -30,6 +30,11 @@ class MonriConstants
 
     const KEY_MIN_INSTALLMENTS = 'KEY_MIN_INSTALLMENTS';
     const KEY_MAX_INSTALLMENTS = 'KEY_MAX_INSTALLMENTS';
+
+	const MONRI_WEBPAY_PRODUCTION_URL = 'https://ipg.monri.com';
+	const MONRI_WEBPAY_TEST_URL = 'https://ipgtest.monri.com';
+	const MONRI_WSPAY_PRODUCTION_URL = 'https://form.wspay.biz/authorization.aspx';
+	consT MONRI_WSPAY_TEST_URL = 'https://formtest.wspay.biz/authorization.aspx';
 }
 
 class Monri extends PaymentModule

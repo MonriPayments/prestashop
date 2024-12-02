@@ -41,7 +41,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $secret_key = Monri::getMonriWSPaySecretKey();
         $amount = '' . ((int) ((float) $cart->getOrderTotal() * 100));
         $form_url = $mode == MonriConstants::MODE_PROD ?
-            'https://form.wspay.biz/authorization.aspx' : 'https://formtest.wspay.biz/authorization.aspx';
+            MonriConstants::MONRI_WSPAY_PRODUCTION_URL : MonriConstants::MONRI_WSPAY_TEST_URL;
 
         $prefix = Tools::getValue('monri_module_name', 'monri');
 

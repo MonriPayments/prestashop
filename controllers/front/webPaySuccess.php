@@ -39,6 +39,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             $mode = Configuration::get(MonriConstants::KEY_MODE);
 	        $response_code = Tools::getValue('response_code');
             $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
+			$comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
                 return $this->setErrorTemplate('Invalid payment option or invalid context.');
@@ -97,7 +98,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $this->applyDiscount($cart, $amount, intval(Tools::getValue('original_amount')));
             }
 
-            $cartAmount = (int) ($cart->getCartTotalPrice() * 100);
             // TODO: check if already approved
             $this->module->validateOrder(
                 $cart->id,
@@ -111,7 +111,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $customer->secure_key
             );
 
-            if ($amount != $cartAmount) {
+            if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() * 100, $comp_precision))) {
                 $order = Order::getByCartId($cart->id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
                 return $this->setErrorTemplate('Invalid amount.');

@@ -37,9 +37,14 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+        $form_url = $mode == MonriConstants::MODE_PROD ?
+	        MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
 
-        $prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
+	    if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+		    // todo: add error message for customer
+		    Tools::redirect('index.php?controller=order&step=1');
+	    }
+		$prefix = Tools::getValue('monri_module_name', 'monri');
 
         $from_post = [
             'utf8',
@@ -79,7 +84,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             $inputs[$item] = [
                 'name' => $item,
                 'type' => 'hidden',
-                'value' => $_POST[$prefix . '_' . $item]
+                'value' => Tools::getValue($prefix . '_' . $item)
             ];
         }
 
@@ -108,4 +113,40 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
     {
         return hash('sha512', $merchant_key . $order_number . $amount . $currency);
     }
+
+	/**
+	 * Check if the context is valid
+	 *
+	 * @return bool
+	 */
+	private function checkIfContextIsValid()
+	{
+		return true === Validate::isLoadedObject($this->context->cart)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_customer)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_address_delivery)
+		       && true === Validate::isUnsignedInt($this->context->cart->id_address_invoice);
+	}
+
+	/**
+	 * Check that this payment option is still available in case the customer changed
+	 * his address just before the end of the checkout process
+	 *
+	 * @return bool
+	 */
+	private function checkIfPaymentOptionIsAvailable()
+	{
+		$modules = Module::getPaymentModules();
+
+		if (empty($modules)) {
+			return false;
+		}
+
+		foreach ($modules as $module) {
+			if (isset($module['name']) && $this->module->name === $module['name']) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
