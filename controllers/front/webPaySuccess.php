@@ -34,12 +34,12 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         try {
-	        PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
+            PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
-	        $response_code = Tools::getValue('response_code');
+            $response_code = Tools::getValue('response_code');
             $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
-			$comp_precision = 0;
+            $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
                 return $this->setErrorTemplate('Invalid payment option or invalid context.');
@@ -47,10 +47,9 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if (!$this->validateReturn()) {
                 return $this->setErrorTemplate('Failed to validate response.');
             }
-			if ($response_code != '0000')
-			{
-				return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
-			}
+            if ($response_code != '0000') {
+                return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
+            }
             $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
@@ -114,8 +113,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() * 100, $comp_precision))) {
                 $order = Order::getByCartId($cart->id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
-	            $order->note = "Amount paid and cart amount are not the same.";
-	            $order->save();
+                $order->note = "Amount paid and cart amount are not the same.";
+                $order->save();
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
@@ -162,7 +161,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
         $this->context->smarty->assign('error_message', $message);
         PrestaShopLogger::addLog($message);
-	    PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
+        PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
         $this->setTemplate('module:monri/views/templates/front/error.tpl');
     }
 

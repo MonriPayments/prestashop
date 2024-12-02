@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -32,9 +33,9 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-	        $this->errors[] = "Something went wrong, please check information and try again.";
-	        $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
-	        $this->redirectWithNotifications($ordersLink);
+            $this->errors[] = "Something went wrong, please check information and try again.";
+            $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+            $this->redirectWithNotifications($ordersLink);
         }
 
         $cart = $this->context->cart;
@@ -84,11 +85,11 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             'value' => $this->generateSignature($cart_id, $amount, $shop_id, $secret_key),
         ];
 
-	    $inputs['TotalAmount'] = [
-		    'name' => 'TotalAmount',
-		    'type' => 'hidden',
-		    'value' => $amount
-	    ];
+        $inputs['TotalAmount'] = [
+            'name' => 'TotalAmount',
+            'type' => 'hidden',
+            'value' => $amount
+        ];
 
 
         $this->context->smarty->assign('monri_inputs', $inputs);

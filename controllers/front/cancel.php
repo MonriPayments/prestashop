@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -51,9 +52,9 @@ class MonriCancelModuleFrontController extends ModuleFrontController
         if (!$authorized) {
             exit($this->module->l('This payment method is not available.', 'validation'));
         }
-	    Context::getContext()->cookie->__set('redirect_error', 'Your custom error message');
-	    $this->info[] = "Something went wrong, please check information and try again.";
-	    $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
-	    $this->redirectWithNotifications($ordersLink);
+        Context::getContext()->cookie->__set('redirect_error', 'Your custom error message');
+        $this->info[] = "Something went wrong, please check information and try again.";
+        $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+        $this->redirectWithNotifications($ordersLink);
     }
 }

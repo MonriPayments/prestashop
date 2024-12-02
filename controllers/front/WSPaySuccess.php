@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -38,7 +39,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $trx_authorized = ($success === '1') && !empty($approval_code);
             $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
-	        $comp_precision = 2;
+            $comp_precision = 2;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
                 return $this->setErrorTemplate('Invalid payment option or invalid context.');
@@ -119,13 +120,13 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             );
 
 
-	        if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() , $comp_precision))) {
-		        $order = Order::getByCartId($cart_id);
-				$order->setCurrentState(Configuration::get('PS_OS_ERROR'));
-		        $order->note = "Amount paid and cart amount are not the same.";
-		        $order->save();
-		        return $this->setErrorTemplate('Invalid amount.');
-	        }
+            if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice(), $comp_precision))) {
+                $order = Order::getByCartId($cart_id);
+                $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
+                $order->note = "Amount paid and cart amount are not the same.";
+                $order->save();
+                return $this->setErrorTemplate('Invalid amount.');
+            }
 
             Tools::redirect(
                 $this->context->link->getPageLink(
