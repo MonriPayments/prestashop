@@ -42,7 +42,6 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 
 	    if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
 		    $this->errors[] = "Something went wrong, please check information and try again.";
-		    // todo: add error message for customer
 		    $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
 		    $this->redirectWithNotifications($ordersLink);
 	    }
