@@ -33,8 +33,8 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-            $this->errors[] = "Something went wrong, please check information and try again.";
-            $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+	        $this->errors[] = $this->module->l('Something went wrong, please check information and try again.');
+            $ordersLink = $this->context->link->getPageLink('cart', $this->ssl, null, ['action' => 'show']);
             $this->redirectWithNotifications($ordersLink);
         }
 

@@ -22,3 +22,7 @@ $_MODULE['<{monri}prestashop>error_fcb9d965230274f9cfc074abea693d02'] = 'Primije
 $_MODULE['<{monri}prestashop>error_a588dcf8ffff5d7054eaccc848af23e8'] = 'ID košarice:';
 $_MODULE['<{monri}prestashop>error_d099c4d298a25cebfcb3d64614c54102'] = 'Poruka:';
 $_MODULE['<{monri}prestashop>error_10ea85644c6d104dfffe365b73137400'] = 'Error kod:';
+$_MODULE['<{monri}prestashop>webpaysubmit_d265ae0cd25349efc8842ec24c4e0790'] = 'Nešto nije u redu, provjerite podatke i pokušajte ponovno.';
+$_MODULE['<{monri}prestashop>wspaysubmit_d265ae0cd25349efc8842ec24c4e0790'] = 'Nešto nije u redu, provjerite podatke i pokušajte ponovno.';
+$_MODULE['<{monri}prestashop>cancel_e2b7dec8fa4b498156dfee6e4c84b156'] = 'Ova metoda plaćanja nije dostupna.';
+$_MODULE['<{monri}prestashop>cancel_06a42876171856eaee7e526965fbe53d'] = 'Plaćanje je otkazano.';
