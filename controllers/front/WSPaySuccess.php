@@ -37,7 +37,6 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $success = (Tools::getValue('Success') && Tools::getValue('Success') === '1') ? '1' : '0';
             $approval_code = Tools::getValue('ApprovalCode', '');
             $trx_authorized = ($success === '1') && !empty($approval_code);
-            $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
             $comp_precision = 2;
 
@@ -120,6 +119,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             );
 
 
+            /*
+                Additional check since Authorize order_status doesn't have logable flag - paid amount check in
+                classes/PaymentModule.php has additional condition $order_status->logable. Since this flag is not set
+                on Authorize, amount validation is skipped and cart items can be changed after gateway redirection
+             */
             if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice(), $comp_precision))) {
                 $order = Order::getByCartId($cart_id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
@@ -141,7 +145,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
-            $this->setTemplate($error_file_template);
+            $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
         }
     }
 
@@ -163,11 +167,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $shop_id = Configuration::get(
             $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST
+                MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST
         );
         $secret_key = Configuration::get(
             $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+                MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
         );
 
         $digest_parts = [

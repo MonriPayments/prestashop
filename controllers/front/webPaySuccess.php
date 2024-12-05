@@ -35,7 +35,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
     {
         try {
             PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
-            $error_file_template = 'module:monri/views/templates/front/error.tpl';
             $mode = Configuration::get(MonriConstants::KEY_MODE);
             $response_code = Tools::getValue('response_code');
             $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('order_number'), 2) : Tools::getValue('order_number');
@@ -110,6 +109,11 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $customer->secure_key
             );
 
+            /*
+                Additional check since Authorize order_status doesn't have logable flag - paid amount check in
+                classes/PaymentModule.php has additional condition $order_status->logable. Since this flag is not set
+                on Authorize, amount validation is skipped and cart items can be changed after gateway redirection
+             */
             if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() * 100, $comp_precision))) {
                 $order = Order::getByCartId($cart->id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
@@ -128,7 +132,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
-            $this->setTemplate($error_file_template);
+            $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
         }
     }
 
