@@ -1,4 +1,5 @@
 <?php
+
 /*
 * 2007-2015 PrestaShop
 *
@@ -25,7 +26,7 @@
 */
 
 
-class MonriSubmitModuleFrontController extends ModuleFrontController
+class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 {
     /**
      * @see FrontController::postProcess()
@@ -35,10 +36,16 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
-        $amount = "" . ((int)((double)$cart->getOrderTotal() * 100));
-        $form_url = $mode == MonriConstants::MODE_PROD ? 'https://ipg.monri.com' : 'https://ipgtest.monri.com';
+        $amount = number_format($cart->getOrderTotal(), 2) * 100;
+        $form_url = $mode == MonriConstants::MODE_PROD ?
+            MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
 
-        $prefix = isset($_POST['monri_module_name']) ? $_POST['monri_module_name'] : 'monri';
+        if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+            $this->errors[] = $this->module->l('Something went wrong, please check information and try again.', 'webPaySubmit');
+	        $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+            $this->redirectWithNotifications($ordersLink);
+        }
+        $prefix = Tools::getValue('monri_module_name', 'monri');
 
         $from_post = [
             'utf8',
@@ -66,7 +73,9 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             'tokenize_pan_offered',
             'tokenize_brands',
             'whitelisted_pan_tokens',
-            'custom_attributes'
+            'custom_attributes',
+            'cancel_url_override',
+            'success_url_override'
         ];
 
 
@@ -76,12 +85,9 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
             $inputs[$item] = [
                 'name' => $item,
                 'type' => 'hidden',
-                'value' => $_POST[$prefix . '_' . $item]
+                'value' => Tools::getValue($prefix . '_' . $item)
             ];
         }
-
-//        echo '<pre>' . var_export($inputs, true) . '</pre>';
-//        die();
 
         $inputs['amount'] = [
             'name' => 'amount',
@@ -102,14 +108,46 @@ class MonriSubmitModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
         return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
-
     }
 
     private function calculateFormV2Digest($merchant_key, $order_number, $amount, $currency)
     {
-//        $d = $merchant_key . $order_number . $amount . $currency;
-//        var_dump($d);
-//        die();
         return hash('sha512', $merchant_key . $order_number . $amount . $currency);
+    }
+
+    /**
+     * Check if the context is valid
+     *
+     * @return bool
+     */
+    private function checkIfContextIsValid()
+    {
+        return true === Validate::isLoadedObject($this->context->cart)
+               && true === Validate::isUnsignedInt($this->context->cart->id_customer)
+               && true === Validate::isUnsignedInt($this->context->cart->id_address_delivery)
+               && true === Validate::isUnsignedInt($this->context->cart->id_address_invoice);
+    }
+
+    /**
+     * Check that this payment option is still available in case the customer changed
+     * his address just before the end of the checkout process
+     *
+     * @return bool
+     */
+    private function checkIfPaymentOptionIsAvailable()
+    {
+        $modules = Module::getPaymentModules();
+
+        if (empty($modules)) {
+            return false;
+        }
+
+        foreach ($modules as $module) {
+            if (isset($module['name']) && $this->module->name === $module['name']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
