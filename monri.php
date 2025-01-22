@@ -612,13 +612,17 @@ class Monri extends PaymentModule
 
         // validating the input
         if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS)) {
+            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
+             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
+             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Merchant Key/Shop ID $mode"));
         }
 
         // validating the input
         if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS)) {
+            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
+             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
+             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Api Key/Secret $mode"));
         }
 
