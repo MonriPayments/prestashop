@@ -198,7 +198,7 @@ class Monri extends PaymentModule
         $address = new Address($cart->id_address_delivery);
 
         $currency = new Currency($cart->id_currency);
-        $order_number = $cart->id . '_' . time();
+	    $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
 
         $inputs = [
             'utf8' => [
@@ -397,7 +397,7 @@ class Monri extends PaymentModule
 		$authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
 		$merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
 		//todo: save client secret in session so that if customer refreshes page we do not have to make another request
-		$order_number = $cart->id . '_' . time();
+		$order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
 
 		Context::getContext()->cookie->__set('order_number', $order_number);
 

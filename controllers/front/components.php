@@ -45,11 +45,11 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             $order_number = $transaction['order_number'] ?? null;
             $cookie_order_number = Context::getContext()->cookie->__get('order_number') ?? null;
 
-            if ($order_number !== $cookie_order_number) {
+            if ( !isset($order_number,$cookie_order_number) || $order_number !== $cookie_order_number) {
                 return $this->setErrorTemplate('Invalid order number.');
             }
 
-            $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number, 2) : $order_number;
+            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
             $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
@@ -61,7 +61,6 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             if ($response_code != '0000') {
                 return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
             }
-            $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
                 return $this->setErrorTemplate('Order with this order id already exists.');
