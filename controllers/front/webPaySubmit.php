@@ -106,6 +106,11 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 				'type' => 'hidden',
 				'value' => $number_of_installments
 			];
+			$inputs['force_installments'] = [
+				'name' => 'force_installments',
+				'type' => 'hidden',
+				'value' => true
+			];
 		}
 
         $inputs['digest'] = [

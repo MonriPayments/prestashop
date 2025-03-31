@@ -134,6 +134,8 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
+			//Monri components has no value for number of installments in response?
+
             \Tools::redirect(
                 $this->context->link->getPageLink(
                     'order-confirmation',

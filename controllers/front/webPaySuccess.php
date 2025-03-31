@@ -74,7 +74,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 'response_code',
                 'digest',
                 'pan_token',
-                'original_amount'
+                'original_amount',
+	            'number_of_installments'
             ];
 
             $extra_vars = [];
@@ -122,6 +123,12 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $order->save();
                 return $this->setErrorTemplate('Invalid amount.');
             }
+
+			if (isset($extra_vars['number_of_installments'])) {
+				$order = Order::getByCartId($cart->id);
+				$order->note = $this->l('Number of installments: ') . $extra_vars['number_of_installments'];
+				$order->save();
+			}
 
             \Tools::redirect(
                 $this->context->link->getPageLink(
