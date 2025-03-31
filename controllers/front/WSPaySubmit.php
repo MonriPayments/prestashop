@@ -64,6 +64,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             'CustomerCountry',
             'CustomerPhone',
             'CustomerEmail',
+	        'PaymentPlan'
         ];
 
         $inputs = [];

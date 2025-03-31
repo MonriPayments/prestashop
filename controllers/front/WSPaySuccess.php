@@ -133,7 +133,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
-            if (isset($extra_vars['PaymentPlan'])) {
+            if (isset($extra_vars['PaymentPlan']) && $extra_vars['PaymentPlan'] !== '0000') {
                 $number_of_installments = (int) substr($extra_vars['PaymentPlan'], 0, 2);
                 $order = Order::getByCartId($cart->id);
                 $order->note = $this->l('Number of installments: ') . $number_of_installments;
