@@ -37,8 +37,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
             $mode = Configuration::get(MonriConstants::KEY_MODE);
             $response_code = Tools::getValue('response_code');
-			$order_number = Tools::getValue('order_number');
-	        $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+            $order_number = Tools::getValue('order_number');
+            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
             $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
@@ -75,7 +75,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 'digest',
                 'pan_token',
                 'original_amount',
-	            'number_of_installments'
+                'number_of_installments'
             ];
 
             $extra_vars = [];
@@ -124,11 +124,11 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
-			if (isset($extra_vars['number_of_installments'])) {
-				$order = Order::getByCartId($cart->id);
-				$order->note = $this->l('Number of installments: ') . $extra_vars['number_of_installments'];
-				$order->save();
-			}
+            if (isset($extra_vars['number_of_installments'])) {
+                $order = Order::getByCartId($cart->id);
+                $order->note = $this->l('Number of installments: ') . $extra_vars['number_of_installments'];
+                $order->save();
+            }
 
             \Tools::redirect(
                 $this->context->link->getPageLink(

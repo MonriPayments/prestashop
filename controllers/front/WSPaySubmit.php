@@ -33,8 +33,8 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-	        $this->errors[] = $this->module->l('Something went wrong, please check information and try again.', 'WSPaySubmit');
-	        $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
+            $this->errors[] = $this->module->l('Something went wrong, please check information and try again.', 'WSPaySubmit');
+            $ordersLink = $this->context->link->getPageLink('order', $this->ssl, null, ['step' => '1']);
             $this->redirectWithNotifications($ordersLink);
         }
 
@@ -91,17 +91,17 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             'value' => $amount
         ];
 
-	    $number_of_installments = Tools::getValue( 'monri_installments' ) ? Tools::getValue( 'monri_installments' ) : 1;
-	    $number_of_installments = min( max( $number_of_installments, 1 ), 36 );
-	    if ( $number_of_installments > 1 ) {
-		    //formatting and adding 00 (no grace period allowed)
-		    $number_of_installments = sprintf('%02d', $number_of_installments) . '00';
-		    $inputs['PaymentPlan'] = [
-			    'name' => 'PaymentPlan',
-			    'type' => 'hidden',
-			    'value' => $number_of_installments
-		    ];
-	    }
+        $number_of_installments = Tools::getValue('monri_installments') ? Tools::getValue('monri_installments') : 1;
+        $number_of_installments = min(max($number_of_installments, 1), 36);
+        if ($number_of_installments > 1) {
+            //formatting and adding 00 (no grace period allowed)
+            $number_of_installments = sprintf('%02d', $number_of_installments) . '00';
+            $inputs['PaymentPlan'] = [
+                'name' => 'PaymentPlan',
+                'type' => 'hidden',
+                'value' => $number_of_installments
+            ];
+        }
 
         $this->context->smarty->assign('monri_inputs', $inputs);
 

@@ -47,8 +47,8 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             if (!Tools::getValue('ShoppingCartID')) {
                 return $this->setErrorTemplate('Shopping cart ID is missing.');
             }
-	        $order_number = Tools::getValue('ShoppingCartID');
-	        $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+            $order_number = Tools::getValue('ShoppingCartID');
+            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
 
             if (empty($cart_id)) {
                 return $this->setErrorTemplate('Invalid shopping cart ID.');
@@ -86,7 +86,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 'Success',
                 'ApprovalCode',
                 'ErrorMessage',
-	            'PaymentPlan'
+                'PaymentPlan'
             ];
 
             $extra_vars = [];
@@ -133,12 +133,12 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
-	        if (isset($extra_vars['PaymentPlan'])) {
-				$number_of_installments = (int) substr($extra_vars['PaymentPlan'], 0, 2);
-		        $order = Order::getByCartId($cart->id);
-		        $order->note = $this->l('Number of installments: ') . $number_of_installments;
-		        $order->save();
-	        }
+            if (isset($extra_vars['PaymentPlan'])) {
+                $number_of_installments = (int) substr($extra_vars['PaymentPlan'], 0, 2);
+                $order = Order::getByCartId($cart->id);
+                $order->note = $this->l('Number of installments: ') . $number_of_installments;
+                $order->save();
+            }
 
             Tools::redirect(
                 $this->context->link->getPageLink(
