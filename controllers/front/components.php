@@ -45,7 +45,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             $order_number = $transaction['order_number'] ?? null;
             $cookie_order_number = Context::getContext()->cookie->__get('order_number') ?? null;
 
-            if ( !isset($order_number,$cookie_order_number) || $order_number !== $cookie_order_number) {
+            if (!isset($order_number, $cookie_order_number) || $order_number !== $cookie_order_number) {
                 return $this->setErrorTemplate('Invalid order number.');
             }
 
@@ -134,7 +134,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
-			//Monri components has no value for number of installments in response?
+            //Monri components has no value for number of installments in response?
 
             \Tools::redirect(
                 $this->context->link->getPageLink(
