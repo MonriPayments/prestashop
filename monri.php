@@ -207,6 +207,7 @@ class Monri extends PaymentModule
 
         $currency = new Currency($cart->id_currency);
 	    $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
+		$allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
 
         $inputs = [
             'utf8' => [
@@ -367,6 +368,10 @@ class Monri extends PaymentModule
             'value' => 'monri',
         ];
 
+		if ($allow_installments) {
+			$number_of_installments = Configuration::get(MonriConstants::MONRI_MAX_INSTALLMENT_COUNT);
+			return $this->generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $externalOption);
+		}
         //        Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
             ->setAction($form_url)
@@ -406,6 +411,7 @@ class Monri extends PaymentModule
 		$merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
 		//todo: save client secret in session so that if customer refreshes page we do not have to make another request
 		$order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
+		$allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
 
 		Context::getContext()->cookie->__set('order_number', $order_number);
 
@@ -455,7 +461,8 @@ class Monri extends PaymentModule
 			'clientSecret' => $client_secret,
 			'scriptUrl' => $script_url,
 			'authenticityToken' => $authenticity_token,
-			'customerAddressId' => $cart->id_address_delivery
+			'customerAddressId' => $cart->id_address_delivery,
+			'allowInstallments' => $allow_installments
 		]);
 
 		$externalOption
@@ -495,6 +502,7 @@ class Monri extends PaymentModule
 
         $address = new Address($cart->id_address_delivery);
         $cart_id = ($mode === MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time());
+	    $allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
 
         $inputs = [
             'Version' => [
@@ -590,6 +598,10 @@ class Monri extends PaymentModule
             'value' => 'monri',
         ];
 
+	    if ($allow_installments) {
+		    $number_of_installments = Configuration::get(MonriConstants::MONRI_MAX_INSTALLMENT_COUNT);
+		    return $this->generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $externalOption);
+	    }
         // Correct test?
         $externalOption->setCallToActionText($this->l('Pay using Monri WSPay - Kartično plaćanje'))
             ->setAction($form_url)
@@ -610,7 +622,7 @@ class Monri extends PaymentModule
         }
     }
 
-    private function validateConfiguration($mode, $payment_type)
+    private function validateConfiguration($mode, $payment_type, $number_of_installments)
     {
         $mode_uppercase = strtoupper($mode);
         $monri_webpay_authenticity_token = Tools::getValue("MONRI_AUTHENTICITY_TOKEN_$mode_uppercase");
@@ -633,6 +645,11 @@ class Monri extends PaymentModule
              $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Api Key/Secret $mode"));
         }
+
+	    // validating the number of installments
+	    if (!Validate::isInt($number_of_installments) || !in_array($number_of_installments, MonriConstants::MONRI_ALLOWED_INSTALLMENTS)) {
+		    $output .= $this->displayError($this->l("Invalid number of installments"));
+	    }
 
         return $output;
     }
@@ -671,7 +688,7 @@ class Monri extends PaymentModule
 
                 return $output . $this->displayForm();
             } else {
-                $validate = $this->validateConfiguration($mode, $payment_type);
+                $validate = $this->validateConfiguration($mode, $payment_type, $number_of_installments);
                 if (!$validate) {
                     $this->updateConfiguration(MonriConstants::MODE_PROD);
                     $this->updateConfiguration(MonriConstants::MODE_TEST);
@@ -699,7 +716,7 @@ class Monri extends PaymentModule
         $default_lang = (int) Configuration::get('PS_LANG_DEFAULT');
 
 	    // Used to show/hide fields which depend on other fields to be active
-	    $this->context->controller->addJS(_MODULE_DIR_ . 'monri/views/js/admin_config.js');
+	    $this->context->controller->addJS(_MODULE_DIR_ . 'monri/views/admin/js/admin_config.js');
 
 	    // Init Fields form array
 	    $fields_form[0]['form'] = [
@@ -773,6 +790,11 @@ class Monri extends PaymentModule
 						    'label' => $this->l('Monri WebPay'),
 					    ],
 					    [
+						    'id' => MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS,
+						    'value' => MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS,
+						    'label' => $this->l('Monri Components'),
+					    ],
+					    [
 						    'id' => MonriConstants::PAYMENT_TYPE_MONRI_WSPAY,
 						    'value' => MonriConstants::PAYMENT_TYPE_MONRI_WSPAY,
 						    'label' => $this->l('Monri WSPay'),
@@ -833,7 +855,7 @@ class Monri extends PaymentModule
 					    'name' => 'name',
 				    ],
 				    'required' => true,
-				    'desc' => $this->l('Select the number of installments.'),
+				    'desc' => $this->l('For Monri WSPay maximum number of installments must be arranged with Monri.'),
 				    'form_group_class' => 'monri_installments_count', // Class for hiding/showing via JS
 			    ],
 		    ],
@@ -882,7 +904,6 @@ class Monri extends PaymentModule
             $merchant_authenticity_token_test = (string) Tools::getValue(MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
             $payment_gateway_service_type = (string) Tools::getValue(MonriConstants::MONRI_PAYMENT_GATEWAY_SERVICE_TYPE);
             $transaction_type = (string) Tools::getValue(MonriConstants::MONRI_TRANSACTION_TYPE);
-	        $paying_in_installments = (string) Tools::getValue(MonriConstants::MONRI_INSTALLMENTS);
 	        $paying_in_installments = (string) Tools::getValue(MonriConstants::MONRI_INSTALLMENTS);
 			$number_of_installments = (string) Tools::getValue(MonriConstants::MONRI_MAX_INSTALLMENT_COUNT);
         } else {
@@ -974,5 +995,35 @@ class Monri extends PaymentModule
 		return $this->context->smarty->fetch('module:monri/views/templates/front/paymentOptionMonriComponentsForm.tpl');
 	}
 
+	/**
+	 * Generate a custom form if installments are allowed
+	 * @param $number_of_installments
+	 * @param $form_url
+	 * @param $new_inputs
+	 * @param $external_option
+	 *
+	 * @return mixed
+	 */
+	private function generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $external_option ) {
+		$installmentForm = '
+	    <form action="'.$form_url.'" method="post">
+	        <label for="monri_installments">'.$this->l('Number of Installments:').'</label>
+	        <select name="monri_installments" id="installments">';
+		for ($i = 1; $i <= $number_of_installments; $i++) {
+			$installmentForm .= '<option value="'.$i.'">'.$i.'</option>';
+		}
+
+		$installmentForm .= '</select>';
+
+		foreach ($new_inputs as $name => $value) {
+			$installmentForm .= '<input type="hidden" name="'.htmlspecialchars($name).'" value="'.htmlspecialchars($value['value']).'">';
+		}
+		$installmentForm .= '</form>';
+
+
+		return $external_option->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
+		               ->setAction($form_url)
+		               ->setForm($installmentForm);
+	}
 
 }

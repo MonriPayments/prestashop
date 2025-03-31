@@ -97,6 +97,17 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
 
         $order_number = $inputs['order_number']['value'];
 
+	    $number_of_installments = Tools::getValue( 'monri_installments' ) ? (int) Tools::getValue( 'monri_installments' ) : 1;
+	    $number_of_installments = min( max( $number_of_installments, 1 ), 36 );
+
+		if ($number_of_installments > 1) {
+			$inputs['number_of_installments'] = [
+				'name' => 'number_of_installments',
+				'type' => 'hidden',
+				'value' => $number_of_installments
+			];
+		}
+
         $inputs['digest'] = [
             'name' => 'digest',
             'type' => 'hidden',

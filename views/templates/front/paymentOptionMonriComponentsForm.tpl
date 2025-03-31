@@ -39,11 +39,12 @@
 <script type="text/javascript">
     var monriClientSecret = '{$clientSecret}';
     var monri = Monri('{$authenticityToken}');
+    var allowInstallments = '{$allowInstallments}';
     {literal}
     const components = monri.components({"clientSecret": monriClientSecret});
     var style = {invalid: {color: 'red'}};
     // Create an instance of the card Component.
-    var card = components.create('card', {style: style});
+    var card = components.create('card', {style: style, showInstallmentsSelection: allowInstallments});
     {/literal}
     card.mount('card-element');
     card.onChange(function (event) {
