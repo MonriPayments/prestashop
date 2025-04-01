@@ -26,7 +26,7 @@
 */
 
 
-class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
+class MonriComponentsModuleFrontController extends ModuleFrontController
 {
     /**
      * @see FrontController::postProcess()
@@ -34,54 +34,68 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
     public function postProcess()
     {
         try {
-            PrestaShopLogger::addLog('Response data: ' . print_r($_GET, true));
+            PrestaShopLogger::addLog('Response data: ' . print_r($_POST, true));
             $mode = Configuration::get(MonriConstants::KEY_MODE);
-            $response_code = Tools::getValue('response_code');
-			$order_number = Tools::getValue('order_number');
-	        $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+
+            $transaction = json_decode(Tools::getValue('monri-transaction'), true);
+
+            if (empty($transaction)) {
+                return $this->setErrorTemplate('Missing Monri transaction.');
+            }
+            $order_number = $transaction['order_number'] ?? null;
+            $cookie_order_number = Context::getContext()->cookie->__get('order_number') ?? null;
+
+            if ( !isset($order_number,$cookie_order_number) || $order_number !== $cookie_order_number) {
+                return $this->setErrorTemplate('Invalid order number.');
+            }
+
+            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
             $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
                 return $this->setErrorTemplate('Invalid payment option or invalid context.');
             }
-            if (!$this->validateReturn()) {
-                return $this->setErrorTemplate('Failed to validate response.');
-            }
+
+            $response_code = $transaction['transaction_response']['response_code'] ?? null;
+
             if ($response_code != '0000') {
                 return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
             }
-
             $order = Order::getByCartId($cart_id);
             if ($order) {
                 return $this->setErrorTemplate('Order with this order id already exists.');
             }
             $cart = new Cart($cart_id);
 
-            $trx_fields = ['acquirer',
+            $trx_fields = [
+                'id',
+                'acquirer',
+                'order_number',
                 'amount',
-                'approval_code',
-                'authentication',
-                'cc_type',
-                'ch_full_name',
                 'currency',
-                'custom_params',
+                'outgoing_amount',
+                'outgoing_currency',
+                'approval_code',
+                'response_code',
+                'response_message',
+                'reference_number',
+                'systan',
+                'eci',
+                'cc_type',
+                'status',
+                'created_at',
+                'transaction_type',
                 'enrollment',
                 'issuer',
-                'language',
-                'masked_pan',
-                'number_of_installments',
-                'order_number',
-                'response_code',
-                'digest',
-                'pan_token',
-                'original_amount'
+                'three_ds_version',
+                'redirect_url'
             ];
 
             $extra_vars = [];
 
             foreach ($trx_fields as $field) {
-                if (Tools::getValue($field)) {
-                    $extra_vars[$field] = Tools::getValue($field);
+                if (isset($transaction['transaction_response'][$field])) {
+                    $extra_vars[$field] = $transaction['transaction_response'][$field];
                 }
             }
 
@@ -91,11 +105,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 
             $currencyId = $cart->id_currency;
             $customer = new \Customer($cart->id_customer);
-            $amount = intval(Tools::getValue('amount'));
+            $amount = $transaction['amount'];
 
-            if (Tools::getValue('original_amount')) {
-                $this->applyDiscount($cart, $amount, intval(Tools::getValue('original_amount')));
-            }
 
             // TODO: check if already approved
             $this->module->validateOrder(
@@ -136,30 +147,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
         }
     }
-
-    private function applyDiscount($cart, $amount, $original_amount)
-    {
-
-        $cart_rule = new CartRule();
-        $language_ids = LanguageCore::getIDs(false);
-
-        foreach ($language_ids as $language_id) {
-            $cart_rule->name[$language_id] = $this->trans('Unicredit Akcija');
-            $cart_rule->description = $this->trans('Unicredit akcija - popust 15%');
-        }
-
-        $now = time();
-        $cart_rule->date_from = date('Y-m-d H:i:s', $now);
-        $cart_rule->date_to = date('Y-m-d H:i:s', strtotime('+10 minute'));
-        $cart_rule->highlight = false;
-        $cart_rule->partial_use = false;
-        $cart_rule->active = true;
-        $cart_rule->id_customer = $cart->id_customer;
-        $cart_rule->reduction_amount = ($original_amount - $amount) / 100;
-        $cart_rule->add();
-        $cart->addCartRule($cart_rule->id);
-    }
-
 
     private function setErrorTemplate($message)
     {
@@ -204,53 +191,5 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         }
 
         return false;
-    }
-
-    /**
-     * Check if WebPay response is valid
-     *
-     * @return bool
-     */
-    private function validateReturn()
-    {
-
-        if (!Tools::getValue('digest')  || ! preg_match('/^[a-f0-9]{128}$/', Tools::getValue('digest'))) {
-            return false;
-        }
-        $merchant_key = Monri::getMonriWebPayMerchantKey();
-        $digest = $this->sanitizeHash(Tools::getValue('digest'));
-
-        $calculated_url = Tools::getCurrentUrl();
-        $calculated_url = strtok($calculated_url, '?');
-        $arr = explode('?', $_SERVER['REQUEST_URI']);
-
-        // If there's more than one '?' shift and join with ?, it's special case of having '?' in success url
-        // eg https://test.com/?page_id=6order-recieved?
-        if (count($arr) > 2) {
-            array_shift($arr);
-            $query_string = implode('?', $arr);
-        } else {
-            $query_string = end($arr);
-        }
-
-        $calculated_url .= '?' . $query_string;
-        $calculated_url = preg_replace('/&digest=[^&]*/', '', $calculated_url);
-
-        //generate known digest
-        $check_digest = hash('sha512', $merchant_key . $calculated_url);
-
-        return hash_equals($check_digest, $digest);
-    }
-
-    /**
-     * Sanitize hash, only hex digits/letters allowed in lowercase (0-9 and a-f)
-     *
-     * @param string $hash
-     *
-     * @return string
-     */
-    public static function sanitizeHash($hash)
-    {
-        return (string) preg_replace('/[^a-f0-9]/', '', $hash);
     }
 }

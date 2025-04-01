@@ -47,7 +47,8 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             if (!Tools::getValue('ShoppingCartID')) {
                 return $this->setErrorTemplate('Shopping cart ID is missing.');
             }
-            $cart_id = ($mode === MonriConstants::MODE_TEST) ? explode('_', Tools::getValue('ShoppingCartID'), 2) : Tools::getValue('ShoppingCartID');
+	        $order_number = Tools::getValue('ShoppingCartID');
+	        $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
 
             if (empty($cart_id)) {
                 return $this->setErrorTemplate('Invalid shopping cart ID.');
@@ -57,7 +58,6 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Failed to validate response.');
             }
 
-            $cart_id = (int) $cart_id[0];
             $order = Order::getByCartId($cart_id);
             if ($order) {
                 return $this->setErrorTemplate('Order with this order id already exists.');
