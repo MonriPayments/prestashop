@@ -27,7 +27,7 @@ You can find additional information regarding Privacy policy of Monri payments o
 
 ## Changelog
 
-= 1.3.0 - 2025-4-23 =
+= 1.4.1 - 2025-4-23 =
 * Fixed issue on Monri WebPay where orders over 1000 currency units would submit wrong value to Monri.
   
 = 1.4.0 - 2025-4-2 =
