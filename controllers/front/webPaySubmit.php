@@ -36,7 +36,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
-        $amount = number_format($cart->getOrderTotal(), 2) * 100;
+        $amount = round($cart->getOrderTotal(), 2) * 100;
         $form_url = $mode == MonriConstants::MODE_PROD ?
             MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
 
