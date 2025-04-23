@@ -27,6 +27,17 @@ You can find additional information regarding Privacy policy of Monri payments o
 
 ## Changelog
 
+= 1.3.0 - 2025-4-23 =
+* Fixed issue on Monri WebPay where orders over 1000 currency units would submit wrong value to Monri.
+  
+= 1.4.0 - 2025-4-2 =
+* Added installments option for Monri WebPay
+* Added installments option for Monri WSPay
+* Added installments option for Monri Components
+
+= 1.3.0 - 2025-4-1 =
+* Added Monri Component as new payment gateway service
+
 = 1.2.0 - 2024-12-10 =
 * Added Monri WSPay 
 * Improvements in success validation
