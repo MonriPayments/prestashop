@@ -66,7 +66,7 @@ class Monri extends PaymentModule
     {
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
-        $this->version = '1.4.1';
+        $this->version = '1.4.2';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];

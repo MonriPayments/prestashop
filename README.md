@@ -27,6 +27,9 @@ You can find additional information regarding Privacy policy of Monri payments o
 
 ## Changelog
 
+= 1.4.2 - 2025-7-23 =
+* Improved apply discount logic when there is original_amount in Monri response
+
 = 1.4.1 - 2025-4-23 =
 * Fixed issue on Monri WebPay where orders over 1000 currency units would submit wrong value to Monri.
   

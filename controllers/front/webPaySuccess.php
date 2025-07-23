@@ -152,7 +152,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 
         foreach ($language_ids as $language_id) {
             $cart_rule->name[$language_id] = $this->trans('Unicredit Akcija');
-            $cart_rule->description = $this->trans('Unicredit akcija - popust 15%');
+            $cart_rule->description = $this->trans('Unicredit akcija');
         }
 
         $now = time();
@@ -163,6 +163,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
         $cart_rule->active = true;
         $cart_rule->id_customer = $cart->id_customer;
         $cart_rule->reduction_amount = ($original_amount - $amount) / 100;
+        $cart_rule->reduction_tax = true;
         $cart_rule->add();
         $cart->addCartRule($cart_rule->id);
     }
