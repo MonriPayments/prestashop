@@ -63,7 +63,11 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             }
             $order = Order::getByCartId($cart_id);
             if ($order) {
-                return $this->setErrorTemplate('Order with this order id already exists.');
+	            //order was created by callback
+	            if ((number_format(Tools::getValue('amount'), $comp_precision)) !== (number_format($order->getOrdersTotalPaid() * 100, $comp_precision)) ) {
+		            return $this->setErrorTemplate('Invalid amount.');
+	            }
+	            $this->redirectToOrderConfirmation($cart_id , $order->getCustomer());
             }
             $cart = new Cart($cart_id);
 
@@ -136,14 +140,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
 
             //Monri components has no value for number of installments in response?
 
-            \Tools::redirect(
-                $this->context->link->getPageLink(
-                    'order-confirmation',
-                    $this->ssl,
-                    null,
-                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
-                )
-            );
+	        $this->redirectToOrderConfirmation($cart_id, $customer);
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
             $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
@@ -194,4 +191,23 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
 
         return false;
     }
+
+	/**
+	 * Redirect the user to order confirmation page
+	 *
+	 * @param $cart_id
+	 * @param Customer $customer
+	 *
+	 * @return void
+	 */
+	private function redirectToOrderConfirmation($cart_id, $customer) {
+		\Tools::redirect(
+			$this->context->link->getPageLink(
+				'order-confirmation',
+				$this->ssl,
+				null,
+				'id_cart=' . $cart_id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
+			)
+		);
+	}
 }
