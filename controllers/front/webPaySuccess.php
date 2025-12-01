@@ -41,9 +41,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
             $comp_precision = 0;
 
-            if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
-                return $this->setErrorTemplate('Invalid payment option or invalid context.');
-            }
             if (!$this->validateReturn()) {
                 return $this->setErrorTemplate('Failed to validate response.');
             }
@@ -53,8 +50,16 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
 
             $order = Order::getByCartId($cart_id);
             if ($order) {
-                return $this->setErrorTemplate('Order with this order id already exists.');
+				//order was created by callback
+				if ((number_format(Tools::getValue('amount'), $comp_precision)) !== (number_format($order->getOrdersTotalPaid() * 100, $comp_precision)) ) {
+					return $this->setErrorTemplate('Invalid amount.');
+				}
+                $this->redirectToOrderConfirmation($cart_id , $order->getCustomer());
             }
+
+	        if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
+		        return $this->setErrorTemplate('Invalid payment option or invalid context.');
+	        }
             $cart = new Cart($cart_id);
 
             $trx_fields = ['acquirer',
@@ -130,14 +135,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $order->save();
             }
 
-            \Tools::redirect(
-                $this->context->link->getPageLink(
-                    'order-confirmation',
-                    $this->ssl,
-                    null,
-                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
-                )
-            );
+			$this->redirectToOrderConfirmation($cart_id, $customer);
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
             $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
@@ -261,4 +259,23 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
     {
         return (string) preg_replace('/[^a-f0-9]/', '', $hash);
     }
+
+	/**
+	 * Redirect the user to order confirmation page
+	 *
+	 * @param $cart_id
+	 * @param Customer $customer
+	 *
+	 * @return void
+	 */
+	private function redirectToOrderConfirmation($cart_id, $customer) {
+		\Tools::redirect(
+			$this->context->link->getPageLink(
+				'order-confirmation',
+				$this->ssl,
+				null,
+				'id_cart=' . $cart_id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
+			)
+		);
+	}
 }

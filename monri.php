@@ -66,10 +66,10 @@ class Monri extends PaymentModule
     {
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
-        $this->version = '1.4.2';
+        $this->version = '1.5.0';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
-        $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
+        $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error', 'callback'];
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;
@@ -198,6 +198,7 @@ class Monri extends PaymentModule
         $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', [], true);
         $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', [], true);
         $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
+		$callback_url = $this->context->link->getModuleLink($this->name, 'callback', [], true);
         $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
         'purchase' : 'authorize';
 
@@ -348,6 +349,11 @@ class Monri extends PaymentModule
                 'name' => 'cancel_url_override',
                 'type' => 'hidden',
                 'value' => $cancel_url,
+            ],
+            'callback_url_override' => [
+	            'name' => 'callback_url_override',
+	            'type' => 'hidden',
+	            'value' => $callback_url,
             ],
         ];
 

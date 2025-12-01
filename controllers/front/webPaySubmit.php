@@ -75,7 +75,8 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'whitelisted_pan_tokens',
             'custom_attributes',
             'cancel_url_override',
-            'success_url_override'
+            'success_url_override',
+	        'callback_url_override'
         ];
 
 
