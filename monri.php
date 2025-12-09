@@ -1201,6 +1201,12 @@ class Monri extends PaymentModule
      */
     public function hookActionOrderStatusPostUpdate(&$params)
     {
+	    $payment_type = Configuration::get(MonriConstants::MONRI_PAYMENT_GATEWAY_SERVICE_TYPE);
+
+		if (!in_array($payment_type, [MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY, MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS])) {
+			return;
+		}
+
         if (!isset($params['oldOrderStatus'], $params['newOrderStatus'], $params['id_order'])) {
             return;
         }
@@ -1307,7 +1313,7 @@ class Monri extends PaymentModule
         $formatted_response = json_decode(json_encode($response), true);
         PrestaShopLogger::addLog(json_encode($response));
         if (!(isset($formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
-            $this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
+            $this->addOrderNote($order, 'There was an error submitting the void to Monri.');
 
             return;
         }
@@ -1336,7 +1342,7 @@ class Monri extends PaymentModule
         $formatted_response = json_decode(json_encode($response), true);
         PrestaShopLogger::addLog(json_encode($response));
         if (!(isset($formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
-            $this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
+            $this->addOrderNote($order, 'There was an error submitting the refund to Monri.');
 
             return;
         }
