@@ -110,14 +110,18 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 false,
                 $customer->secure_key
             );
+	        $order = Order::getByCartId($cart->id);
+	        Db::getInstance()->insert('order_monri', [
+		        'id_order' => $order->id,
+		        'monri_order_id' => pSQL($extra_vars['order_number'] ?? '' ),
+	        ]);
 
-            /*
-                Additional check since Authorize order_status doesn't have logable flag - paid amount check in
-                classes/PaymentModule.php has additional condition $order_status->logable. Since this flag is not set
-                on Authorize, amount validation is skipped and cart items can be changed after gateway redirection
-             */
+	        /*
+				Additional check since Authorize order_status doesn't have logable flag - paid amount check in
+				classes/PaymentModule.php has additional condition $order_status->logable. Since this flag is not set
+				on Authorize, amount validation is skipped and cart items can be changed after gateway redirection
+			 */
             if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice() * 100, $comp_precision))) {
-                $order = Order::getByCartId($cart->id);
                 $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
                 $order->note = "Amount paid and cart amount are not the same.";
                 $order->save();
@@ -125,7 +129,6 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             }
 
             if (isset($extra_vars['number_of_installments'])) {
-                $order = Order::getByCartId($cart->id);
                 $order->note = $this->l('Number of installments: ') . $extra_vars['number_of_installments'];
                 $order->save();
             }
