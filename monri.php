@@ -1,7 +1,8 @@
 <?php
-use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
+
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -53,121 +54,134 @@ class MonriConstants
     const MONRI_COMPONENTS_SCRIPT_ENDPOINT = 'https://ipg.monri.com/dist/components.js';
 }
 
-class MonriApi {
-	public $test_mode = true;
+class MonriApi
+{
+    public $test_mode = true;
 
-	public function __construct() {
-		$mode = Configuration::get(MonriConstants::KEY_MODE);
-		$this->test_mode = (int) ($mode === MonriConstants::MODE_TEST);
-	}
+    public function __construct()
+    {
+        $mode = Configuration::get(MonriConstants::KEY_MODE);
+        $this->test_mode = (int) ($mode === MonriConstants::MODE_TEST);
+    }
 
-	private function request( $path, $body, $log_request = true ) {
+    private function request($path, $body, $log_request = true)
+    {
+        if ($log_request) {
+            PrestaShopLogger::addLog('Monri api request: ' . print_r($body, true));
+        }
 
-		if ($log_request) {
-			PrestaShopLogger::addLog('Monri api request: ' . print_r($body, true));
-		}
+        $url = $this->test_mode ? MonriConstants::MONRI_WEBPAY_TEST_URL : MonriConstants::MONRI_WEBPAY_PRODUCTION_URL;
 
-		$url = $this->test_mode ? MonriConstants::MONRI_WEBPAY_TEST_URL : MonriConstants::MONRI_WEBPAY_PRODUCTION_URL;
+        $headers = [
+            'Content-Type' => 'application/xml',
+            'Accept' => 'application/xml',
+        ];
+        try {
+            $client = new Client([
+                'timeout' => 15,
+                'headers' => array_merge($headers, [
+                    'User-Agent' => 'Monri 3DS Ringer',
+                ]),
+            ]);
 
-		$headers = [
-			'Content-Type' => 'application/xml',
-			'Accept'       => 'application/xml',
-		];
-		try {
-			$client = new Client([
-				'timeout' => 15,
-				'headers' => array_merge($headers, [
-					'User-Agent' => 'Monri 3DS Ringer'
-				])
-			]);
+            $response = $client->post($url . $path, [
+                'body' => (string) $body->asXML(),
+            ]);
+            $responseBody = new SimpleXMLElement($response->getBody());
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                sprintf('Monri API request failed: %s', $e->getMessage()),
+                3
+            );
 
-			$response = $client->post($url . $path, [
-				'body' => (string) $body->asXML()
-			]);
-			$responseBody = new SimpleXmlElement( $response->getBody() );
-		} catch (\Exception $e) {
-			PrestaShopLogger::addLog(
-				sprintf('Monri API request failed: %s', $e->getMessage()),
-				3
-			);
-			return false;
-		}
+            return false;
+        }
 
-		return $responseBody;
-	}
+        return $responseBody;
+    }
 
-	/**
-	 * @param string $orderNumber
-	 * @param float|string $amount
-	 * @param string $currency
-	 *
-	 * @return false|string
-	 * @throws GuzzleException
-	 */
-	public function refund( $orderNumber, $amount, $currency ) {
-		$payload = $this->getPayload( $orderNumber, $amount, $currency );
-		return $this->request( "/transactions/$orderNumber/refund.xml", $payload );
-	}
+    /**
+     * @param string $orderNumber
+     * @param float|string $amount
+     * @param string $currency
+     *
+     * @return false|string
+     *
+     * @throws GuzzleException
+     */
+    public function refund($orderNumber, $amount, $currency)
+    {
+        $payload = $this->getPayload($orderNumber, $amount, $currency);
 
-	/**
-	 * @param string $orderNumber
-	 * @param float|string $amount
-	 * @param string $currency
-	 *
-	 * @return false|string
-	 * @throws GuzzleException
-	 */
-	public function capture( $orderNumber, $amount, $currency ) {
-		$payload = $this->getPayload( $orderNumber, $amount, $currency );
-		return $this->request( "/transactions/$orderNumber/capture.xml", $payload );
-	}
+        return $this->request("/transactions/$orderNumber/refund.xml", $payload);
+    }
 
-	/**
-	 * @param string $orderNumber
-	 * @param float|string $amount
-	 * @param string $currency
-	 *
-	 * @return false|string
-	 * @throws GuzzleException
-	 */
-	public function void( $orderNumber, $amount, $currency ) {
-		$payload = $this->getPayload( $orderNumber, $amount, $currency );
-		return $this->request( "/transactions/$orderNumber/void.xml", $payload );
-	}
+    /**
+     * @param string $orderNumber
+     * @param float|string $amount
+     * @param string $currency
+     *
+     * @return false|string
+     *
+     * @throws GuzzleException
+     */
+    public function capture($orderNumber, $amount, $currency)
+    {
+        $payload = $this->getPayload($orderNumber, $amount, $currency);
 
-	/**
-	 * @param string $orderNumber
-	 * @param float|string $amount
-	 * @param string $currency
-	 *
-	 * @return SimpleXMLElement
-	 */
-	public function getPayload( string $orderNumber, float|string $amount, string $currency ): SimpleXMLElement {
-		$authenticityToken = Configuration::get( $this->test_mode ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD );
+        return $this->request("/transactions/$orderNumber/capture.xml", $payload);
+    }
 
-		$payload = new SimpleXMLElement( "<transaction></transaction>" );
-		$payload->addChild( 'order-number', $orderNumber );
-		$payload->addChild( 'amount', $amount );
-		$payload->addChild( 'currency', $currency );
-		$payload->addChild( 'authenticity-token', $authenticityToken );
-		$payload->addChild( 'digest', $this->digestAPI( $orderNumber, $amount, $currency ) );
+    /**
+     * @param string $orderNumber
+     * @param float|string $amount
+     * @param string $currency
+     *
+     * @return false|string
+     *
+     * @throws GuzzleException
+     */
+    public function void($orderNumber, $amount, $currency)
+    {
+        $payload = $this->getPayload($orderNumber, $amount, $currency);
 
-		return $payload;
-	}
+        return $this->request("/transactions/$orderNumber/void.xml", $payload);
+    }
 
-	/**
-	 * @param string $orderNumber
-	 * @param int $amount
-	 * @param string $currency
-	 *
-	 * @return string
-	 */
-	private function digestAPI( $orderNumber, $amount, $currency ) {
+    /**
+     * @param string $orderNumber
+     * @param float|string $amount
+     * @param string $currency
+     *
+     * @return SimpleXMLElement
+     */
+    public function getPayload(string $orderNumber, float|string $amount, string $currency): SimpleXMLElement
+    {
+        $authenticityToken = Configuration::get($this->test_mode ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD);
 
-		$merchantKey = Configuration::get( $this->test_mode ? MonriConstants::KEY_MERCHANT_KEY_TEST : MonriConstants::KEY_MERCHANT_KEY_PROD );
+        $payload = new SimpleXMLElement('<transaction></transaction>');
+        $payload->addChild('order-number', $orderNumber);
+        $payload->addChild('amount', $amount);
+        $payload->addChild('currency', $currency);
+        $payload->addChild('authenticity-token', $authenticityToken);
+        $payload->addChild('digest', $this->digestAPI($orderNumber, $amount, $currency));
 
-		return hash( 'SHA1', $merchantKey . $orderNumber . $amount . $currency );
-	}
+        return $payload;
+    }
+
+    /**
+     * @param string $orderNumber
+     * @param int $amount
+     * @param string $currency
+     *
+     * @return string
+     */
+    private function digestAPI($orderNumber, $amount, $currency)
+    {
+        $merchantKey = Configuration::get($this->test_mode ? MonriConstants::KEY_MERCHANT_KEY_TEST : MonriConstants::KEY_MERCHANT_KEY_PROD);
+
+        return hash('SHA1', $merchantKey . $orderNumber . $amount . $currency);
+    }
 }
 
 class Monri extends PaymentModule
@@ -490,6 +504,7 @@ class Monri extends PaymentModule
 
         if ($allow_installments) {
             $number_of_installments = Configuration::get(MonriConstants::MONRI_MAX_INSTALLMENT_COUNT);
+
             return $this->generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $externalOption);
         }
         //        Correct test?
@@ -502,7 +517,6 @@ class Monri extends PaymentModule
 
     public function getMonriComponentsExternalPaymentOption()
     {
-
         if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
             $externalOption = new PaymentOption();
         } else {
@@ -529,23 +543,23 @@ class Monri extends PaymentModule
             'purchase' : 'authorize';
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
-        //todo: save client secret in session so that if customer refreshes page we do not have to make another request
+        // todo: save client secret in session so that if customer refreshes page we do not have to make another request
         $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
         $allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
 
         Context::getContext()->cookie->__set('order_number', $order_number);
 
         $data = [
-            'amount'           => $amount_in_minor_units,
-            'order_number'     => $order_number,
-            'currency'         => $currency_order->iso_code,
+            'amount' => $amount_in_minor_units,
+            'order_number' => $order_number,
+            'currency' => $currency_order->iso_code,
             'transaction_type' => $transaction_type,
-            'order_info'       => 'prestashop order'
+            'order_info' => 'prestashop order',
         ];
 
         $data = json_encode($data);
         $timestamp = time();
-        $digest    = hash(
+        $digest = hash(
             'sha512',
             $merchant_key .
             $timestamp .
@@ -559,14 +573,14 @@ class Monri extends PaymentModule
 
         $options = [
             'http' => [
-                'method'  => 'POST',
-                'header'  => [
+                'method' => 'POST',
+                'header' => [
                     'Content-Type: application/json',
                     'Authorization: ' . $authorization,
                 ],
                 'content' => $data,
-                'timeout' => 10
-            ]
+                'timeout' => 10,
+            ],
         ];
 
         $response = Tools::file_get_contents($url, false, stream_context_create($options));
@@ -583,14 +597,13 @@ class Monri extends PaymentModule
             'scriptUrl' => $script_url,
             'authenticityToken' => $authenticity_token,
             'customerAddressId' => $cart->id_address_delivery,
-            'allowInstallments' => $allow_installments
+            'allowInstallments' => $allow_installments,
         ]);
 
         $externalOption
             ->setModuleName($this->name)
             ->setCallToActionText($this->l('Pay using Monri Components - Kartično plaćanje'))
             ->setForm($this->generateEmbeddedForm());
-
 
         return $externalOption;
     }
@@ -703,9 +716,9 @@ class Monri extends PaymentModule
                 'value' => $customer->email,
             ],
             'PaymentPlan' => [
-	            'name' => 'PaymentPlan',
-	            'type' => 'hidden',
-	            'value' => '0000',
+                'name' => 'PaymentPlan',
+                'type' => 'hidden',
+                'value' => '0000',
             ],
         ];
 
@@ -726,6 +739,7 @@ class Monri extends PaymentModule
 
         if ($allow_installments) {
             $number_of_installments = Configuration::get(MonriConstants::MONRI_MAX_INSTALLMENT_COUNT);
+
             return $this->generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $externalOption);
         }
         // Correct test?
@@ -757,24 +771,24 @@ class Monri extends PaymentModule
         $output = null;
 
         // validating the input
-        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
+        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key))
+            && ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY)) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Merchant Key/Shop ID $mode"));
         }
 
         // validating the input
-        if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
+        if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token))
+            && ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY)) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Api Key/Secret $mode"));
         }
 
         // validating the number of installments
         if (!Validate::isInt($number_of_installments) || !in_array($number_of_installments, MonriConstants::MONRI_ALLOWED_INSTALLMENTS)) {
-            $output .= $this->displayError($this->l("Invalid number of installments"));
+            $output .= $this->displayError($this->l('Invalid number of installments'));
         }
 
         return $output;
@@ -803,9 +817,9 @@ class Monri extends PaymentModule
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
 
                 return $output . $this->displayForm();
-            } elseif ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY &&
-                      $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY &&
-                      $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS) {
+            } elseif ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+                      && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY
+                      && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS) {
                 $output .= $this->displayError($this->l("Invalid Payment Service, expected: Monri WebPay, Monri Components or Monri WSPay got '$payment_type'"));
 
                 return $output . $this->displayForm();
@@ -932,7 +946,7 @@ class Monri extends PaymentModule
                     'type' => 'radio',
                     'label' => $this->l('Transaction type'),
                     'name' => MonriConstants::MONRI_TRANSACTION_TYPE,
-                    'desc'    => $this->l('Needs to be set to action arranged with Monri for gateway to function properly.'),
+                    'desc' => $this->l('Needs to be set to action arranged with Monri for gateway to function properly.'),
                     'class' => 't',
                     'values' => [
                         [
@@ -1110,6 +1124,7 @@ class Monri extends PaymentModule
      * Generate a form for Embedded Payment
      *
      * @return string
+     *
      * @throws SmartyException
      */
     private function generateEmbeddedForm()
@@ -1123,6 +1138,7 @@ class Monri extends PaymentModule
 
     /**
      * Generate a custom form if installments are allowed
+     *
      * @param $number_of_installments
      * @param $form_url
      * @param $new_inputs
@@ -1133,193 +1149,202 @@ class Monri extends PaymentModule
     private function generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $external_option)
     {
         $installmentForm = '
-	    <form action="'.$form_url.'" method="post">
-	        <label for="monri_installments">'.$this->l('Number of Installments:').'</label>
+	    <form action="' . $form_url . '" method="post">
+	        <label for="monri_installments">' . $this->l('Number of Installments:') . '</label>
 	        <select name="monri_installments" id="installments">';
-        for ($i = 1; $i <= $number_of_installments; $i++) {
-            $installmentForm .= '<option value="'.$i.'">'.$i.'</option>';
+        for ($i = 1; $i <= $number_of_installments; ++$i) {
+            $installmentForm .= '<option value="' . $i . '">' . $i . '</option>';
         }
 
         $installmentForm .= '</select>';
 
         foreach ($new_inputs as $name => $value) {
-            $installmentForm .= '<input type="hidden" name="'.htmlspecialchars($name).'" value="'.htmlspecialchars($value['value']).'">';
+            $installmentForm .= '<input type="hidden" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value['value']) . '">';
         }
         $installmentForm .= '</form>';
-
 
         return $external_option->setCallToActionText($this->l('Pay using Monri - Kartično plaćanje'))
                        ->setAction($form_url)
                        ->setForm($installmentForm);
     }
 
-	private function createTables()
-	{
-		$sql = "
-            CREATE TABLE IF NOT EXISTS `"._DB_PREFIX_."order_monri` (
+    private function createTables()
+    {
+        $sql = '
+            CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_monri` (
                 `id_order` INT UNSIGNED NOT NULL,
                 `monri_order_id` VARCHAR(255) NOT NULL,
                 PRIMARY KEY (`id_order`)
-            ) ENGINE="._MYSQL_ENGINE_." DEFAULT CHARSET=utf8;
-        ";
+            ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;
+        ';
 
-		return Db::getInstance()->execute($sql);
-	}
+        return Db::getInstance()->execute($sql);
+    }
 
-	private function dropTables()
-	{
-		$sql = "DROP TABLE IF EXISTS `"._DB_PREFIX_."order_monri`";
-		return Db::getInstance()->execute($sql);
-	}
+    private function dropTables()
+    {
+        $sql = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'order_monri`';
 
-	private function getMonriOrderId($order) {
-		return Db::getInstance()->getValue(
-			'SELECT monri_order_id FROM '._DB_PREFIX_.'order_monri WHERE id_order = '.(int)$order->id
-		);
-	}
+        return Db::getInstance()->execute($sql);
+    }
 
-	/**
-	 * @throws PrestaShopDatabaseException
-	 * @throws PrestaShopException
-	 */
-	public function hookActionOrderStatusPostUpdate(&$params)
-	{
-		if (!isset($params['oldOrderStatus'], $params['newOrderStatus'], $params['id_order'])) {
-			return;
-		}
+    private function getMonriOrderId($order)
+    {
+        return Db::getInstance()->getValue(
+            'SELECT monri_order_id FROM ' . _DB_PREFIX_ . 'order_monri WHERE id_order = ' . (int) $order->id
+        );
+    }
 
-		$oldStatusId = $params['oldOrderStatus']->id ?? '';
-		$newStatusId = $params['newOrderStatus']->id ?? '';
-		$orderId = $params['id_order'] ?? '';
-		$order = new Order($orderId);
+    /**
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function hookActionOrderStatusPostUpdate(&$params)
+    {
+        if (!isset($params['oldOrderStatus'], $params['newOrderStatus'], $params['id_order'])) {
+            return;
+        }
 
+        $oldStatusId = $params['oldOrderStatus']->id ?? '';
+        $newStatusId = $params['newOrderStatus']->id ?? '';
+        $orderId = $params['id_order'] ?? '';
+        $order = new Order($orderId);
 
-		if (!Validate::isLoadedObject($order) || $order->module != 'monri') {
-			return;
-		}
+        if (!Validate::isLoadedObject($order) || $order->module != 'monri') {
+            return;
+        }
 
-		//todo: create custom states for monri
-		$captureStateIds = [2]; // Payment accepted
-		$voidStateIds = [6, 7]; // Cancelled, Refunded
-		$refundStateIds = [6, 7]; // Cancelled, Refunded
-		$authorizeStateIds = [17]; // Authorized. To be captured by merchant
+        // todo: create custom states for monri
+        $captureStateIds = [2]; // Payment accepted
+        $voidStateIds = [6, 7]; // Cancelled, Refunded
+        $refundStateIds = [6, 7]; // Cancelled, Refunded
+        $authorizeStateIds = [17]; // Authorized. To be captured by merchant
 
-		try {
-			if ( ( in_array( $oldStatusId, $authorizeStateIds ) && in_array( $newStatusId, $captureStateIds ) ) ) {
-				//handle capture
-				$this->processMonriCapture($order);
-				return;
-			}
+        try {
+            if (in_array($oldStatusId, $authorizeStateIds) && in_array($newStatusId, $captureStateIds)) {
+                // handle capture
+                $this->processMonriCapture($order);
 
-			if ( ( in_array( $oldStatusId, $captureStateIds ) && in_array( $newStatusId, $refundStateIds ) ) ) {
-				//handle refund
-				$this->processMonriRefund($order);
-				return;
-			}
+                return;
+            }
 
-			if ( ( in_array( $oldStatusId, $authorizeStateIds ) && in_array( $newStatusId, $voidStateIds ) ) ) {
-				//handle void
-				$this->processMonriVoid($order);
-				return;
-			}
-		}
-        catch ( GuzzleException $e ) {
-	        PrestaShopLogger::addLog(sprintf(
-		        'Monri API call failed for order %d: %s',
-		        $orderId,
-		        $e->getMessage()
-	        ), 3);
-		}
-	}
+            if (in_array($oldStatusId, $captureStateIds) && in_array($newStatusId, $refundStateIds)) {
+                // handle refund
+                $this->processMonriRefund($order);
 
-	private function addOrderNote($order, $note) {
-		$previousNote = $order->note;
-		$newNote = $previousNote
-			? $previousNote . "\n" . $note
-			: $note;
+                return;
+            }
 
-		$order->note = $newNote;
-		$order->save();
-	}
+            if (in_array($oldStatusId, $authorizeStateIds) && in_array($newStatusId, $voidStateIds)) {
+                // handle void
+                $this->processMonriVoid($order);
 
-	/**
-	 * @throws GuzzleException
-	 */
-	private function processMonriCapture($order) {
-		$currency = ( new Currency( $order->id_currency ) )->iso_code;
-		$amount = (float) $order->total_paid;
-		$monriOrderId = $this->getMonriOrderId($order);
+                return;
+            }
+        } catch (GuzzleException $e) {
+            PrestaShopLogger::addLog(sprintf(
+                'Monri API call failed for order %d: %s',
+                $orderId,
+                $e->getMessage()
+            ), 3);
+        }
+    }
 
-		if ($amount < 0.01) {
-			return;
-		}
+    private function addOrderNote($order, $note)
+    {
+        $previousNote = $order->note;
+        $newNote = $previousNote
+            ? $previousNote . "\n" . $note
+            : $note;
 
-		$response = ( new MonriApi() )->capture( $monriOrderId, $amount * 100, $currency );
-		$formatted_response = json_decode(json_encode($response), true);
-		PrestaShopLogger::addLog(json_encode($response));
-		if (!(isset( $formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
-			$this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
-			return;
-		}
+        $order->note = $newNote;
+        $order->save();
+    }
 
-		$this->addOrderNote($order, sprintf(
-			'Capture of %.2f %s successfully sent to Monri.',
-			$amount,
-			$currency
-		));
-	}
+    /**
+     * @throws GuzzleException
+     */
+    private function processMonriCapture($order)
+    {
+        $currency = (new Currency($order->id_currency))->iso_code;
+        $amount = (float) $order->total_paid;
+        $monriOrderId = $this->getMonriOrderId($order);
 
-	/**
-	 * @throws GuzzleException
-	 */
-	private function processMonriVoid($order) {
-		$currency = ( new Currency( $order->id_currency ) )->iso_code;
-		$amount = (float) $order->total_paid;
-		$monriOrderId = $this->getMonriOrderId($order);
+        if ($amount < 0.01) {
+            return;
+        }
 
-		if ($amount < 0.01) {
-			return;
-		}
+        $response = (new MonriApi())->capture($monriOrderId, $amount * 100, $currency);
+        $formatted_response = json_decode(json_encode($response), true);
+        PrestaShopLogger::addLog(json_encode($response));
+        if (!(isset($formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
+            $this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
 
-		$response = ( new MonriApi() )->void( $monriOrderId, $amount * 100, $currency );
-		$formatted_response = json_decode(json_encode($response), true);
-		PrestaShopLogger::addLog(json_encode($response));
-		if (!(isset( $formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
-			$this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
-			return;
-		}
+            return;
+        }
 
-		$this->addOrderNote($order, sprintf(
-			'Void of %.2f %s successfully sent to Monri.',
-			$amount,
-			$currency
-		));
-	}
+        $this->addOrderNote($order, sprintf(
+            'Capture of %.2f %s successfully sent to Monri.',
+            $amount,
+            $currency
+        ));
+    }
 
-	/**
-	 * @throws GuzzleException
-	 */
-	private function processMonriRefund($order) {
-		$currency = ( new Currency( $order->id_currency ) )->iso_code;
-		$amount = (float) $order->total_paid;
-		$monriOrderId = $this->getMonriOrderId($order);
+    /**
+     * @throws GuzzleException
+     */
+    private function processMonriVoid($order)
+    {
+        $currency = (new Currency($order->id_currency))->iso_code;
+        $amount = (float) $order->total_paid;
+        $monriOrderId = $this->getMonriOrderId($order);
 
-		if ($amount < 0.01) {
-			return;
-		}
+        if ($amount < 0.01) {
+            return;
+        }
 
-		$response = ( new MonriApi() )->refund( $monriOrderId, $amount * 100, $currency );
-		$formatted_response = json_decode(json_encode($response), true);
-		PrestaShopLogger::addLog(json_encode($response));
-		if (!(isset( $formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
-			$this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
-			return;
-		}
+        $response = (new MonriApi())->void($monriOrderId, $amount * 100, $currency);
+        $formatted_response = json_decode(json_encode($response), true);
+        PrestaShopLogger::addLog(json_encode($response));
+        if (!(isset($formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
+            $this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
 
-		$this->addOrderNote($order, sprintf(
-			'Refund of %.2f %s successfully sent to Monri.',
-			$amount,
-			$currency
-		));
-	}
+            return;
+        }
+
+        $this->addOrderNote($order, sprintf(
+            'Void of %.2f %s successfully sent to Monri.',
+            $amount,
+            $currency
+        ));
+    }
+
+    /**
+     * @throws GuzzleException
+     */
+    private function processMonriRefund($order)
+    {
+        $currency = (new Currency($order->id_currency))->iso_code;
+        $amount = (float) $order->total_paid;
+        $monriOrderId = $this->getMonriOrderId($order);
+
+        if ($amount < 0.01) {
+            return;
+        }
+
+        $response = (new MonriApi())->refund($monriOrderId, $amount * 100, $currency);
+        $formatted_response = json_decode(json_encode($response), true);
+        PrestaShopLogger::addLog(json_encode($response));
+        if (!(isset($formatted_response['response-code']) && $formatted_response['response-code'] === '0000')) {
+            $this->addOrderNote($order, 'There was an error submitting the capture to Monri.');
+
+            return;
+        }
+
+        $this->addOrderNote($order, sprintf(
+            'Refund of %.2f %s successfully sent to Monri.',
+            $amount,
+            $currency
+        ));
+    }
 }
