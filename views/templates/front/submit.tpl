@@ -26,7 +26,7 @@
             var java_enabled = window && window.navigator && typeof navigator.javaEnabled === 'function'
                 ? navigator.javaEnabled()
                 : false;
-            var ip_address = '{$customer_ip|escape:'javascript':'UTF-8'}';
+            var ip_address = '{$customer_ip|escape:'javascript'}';
 
             var language = '';
             if (window && window.navigator) {

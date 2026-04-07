@@ -466,7 +466,8 @@ class Monri extends PaymentModule
             'scriptUrl' => $script_url,
             'authenticityToken' => $authenticity_token,
             'customerAddressId' => $cart->id_address_delivery,
-            'allowInstallments' => $allow_installments
+            'allowInstallments' => $allow_installments,
+            'customerIp' => Tools::getRemoteAddr(),
         ]);
 
         $externalOption
