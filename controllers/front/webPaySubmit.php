@@ -67,6 +67,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'force_cc_type',
             'moto',
             'language',
+            'supported_payment_methods',
             'tokenize_pan_until',
             'custom_params',
             'tokenize_pan',
@@ -119,9 +120,12 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
         ];
 
+		$customer_ip_address = Tools::getRemoteAddr();
         $this->context->smarty->assign("monri_inputs", $inputs);
 
         $this->context->smarty->assign('action', "$form_url/v2/form");
+
+        $this->context->smarty->assign('customer_ip', $customer_ip_address);
 
         return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
     }

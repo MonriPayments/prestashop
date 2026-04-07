@@ -274,6 +274,11 @@ class Monri extends PaymentModule
                 'type' => 'hidden',
                 'value' => $transaction_type,
             ],
+            'supported_payment_methods' => [
+                'name' => 'supported_payment_methods',
+                'type' => 'hidden',
+                'value' => 'card',
+            ],
             'number_of_installments' => [
                 'name' => 'number_of_installments',
                 'type' => 'hidden',
