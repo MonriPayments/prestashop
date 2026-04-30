@@ -1,7 +1,6 @@
 <body>
 
 <form action="{$action}" id="monri-payment-form" method="post">
-    <input type="hidden" name="browser_info" id="browser_info" value=""/>
     {foreach from=$monri_inputs item=input}
         <input type="hidden" name="{$input.name}" id="{$input.name}" value="{$input.value}"/>
     {/foreach}
@@ -26,7 +25,7 @@
             var java_enabled = window && window.navigator && typeof navigator.javaEnabled === 'function'
                 ? navigator.javaEnabled()
                 : false;
-            var ip_address = '{$customer_ip|escape:'javascript'}';
+            var ip_address = '{$customer_ip|default:''|escape:'javascript'}';
 
             var language = '';
             if (window && window.navigator) {
@@ -53,7 +52,14 @@
             };
         }
 
-        document.getElementById('browser_info').value = JSON.stringify(collectBrowserInfo());
+        {if isset($is_webpay)}
+            var browser_info_element = document.createElement('input');
+            browser_info_element.type = 'hidden';
+            browser_info_element.name = 'browser_info';
+            browser_info_element.value = JSON.stringify(collectBrowserInfo());
+            document.getElementById('monri-payment-form').appendChild(browser_info_element);
+        {/if}
+
         document.getElementById('monri-payment-form').submit();
     })();
 </script>

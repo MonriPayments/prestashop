@@ -126,6 +126,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign('action', "$form_url/v2/form");
 
         $this->context->smarty->assign('customer_ip', $customer_ip_address);
+        $this->context->smarty->assign('is_webpay', true);
 
         return $this->setTemplate('module:monri/views/templates/front/submit.tpl');
     }
