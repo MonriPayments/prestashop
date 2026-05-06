@@ -26,7 +26,7 @@
     error message
 </div>
 
-<form id="monri-form" action="{$action}" method="post">
+<form id="monri-form" action="{$action|escape:'html'}" method="post">
     <div id="card-element">
         <!-- A Monri Component will be inserted here. -->
     </div>
@@ -37,9 +37,9 @@
 
 <script src='{$scriptUrl}'></script>
 <script type="text/javascript">
-    var monriClientSecret = '{$clientSecret}';
-    var monri = Monri('{$authenticityToken}');
-    var allowInstallments = '{$allowInstallments}';
+    var monriClientSecret = '{$clientSecret|escape:'javascript'}';
+    var monri = Monri('{$authenticityToken|escape:'javascript'}');
+    var allowInstallments = {if $allowInstallments}true{else}false{/if};
     {literal}
     const components = monri.components({"clientSecret": monriClientSecret});
     var style = {invalid: {color: 'red'}};
@@ -55,7 +55,42 @@
             displayError.textContent = '';
         }
     });
-    console.log('action: ', '{$action}')
+
+    function collectBrowserInfo() {
+        var screen_width = window && window.screen ? window.screen.width : '';
+        var screen_height = window && window.screen ? window.screen.height : '';
+        var color_depth = window && window.screen ? window.screen.colorDepth : '';
+        var user_agent = window && window.navigator ? window.navigator.userAgent : '';
+        var java_enabled = window && window.navigator && typeof navigator.javaEnabled === 'function'
+            ? navigator.javaEnabled()
+            : false;
+        var ip_address = '{$customerIp|escape:'javascript'}';
+
+        var language = '';
+        if (window && window.navigator) {
+            language = window.navigator.language
+                ? window.navigator.language
+                : window.navigator.browserLanguage || '';
+        }
+
+        var d = new Date();
+        var time_zone_offset = d.getTimezoneOffset();
+
+        return {
+            screen_width: screen_width,
+            screen_height: screen_height,
+            color_depth: color_depth,
+            user_agent: user_agent,
+            time_zone_offset: time_zone_offset,
+            language: language,
+            java_enabled: java_enabled,
+            http_accept: '*/*',
+            http_user_agent: user_agent,
+            http_accept_language: language || '*',
+            ip: ip_address,
+        };
+    }
+
     // See js in modules/paypal/views/templates/bnpl/bnpl-payment-step.tpl
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#payment-confirmation button').addEventListener('click', async function(event) {
@@ -66,7 +101,7 @@
             const selectedOption = $('input[name=payment-option]:checked');
             if (selectedOption.attr("data-module-name") === 'monri') {
 
-                customerShippingAddress = prestashop.customer.addresses['{$customerAddressId}'];
+                customerShippingAddress = prestashop.customer.addresses['{$customerAddressId|escape:'javascript'}'];
                 if (!customerShippingAddress.phone) {
                     setErrorMessage('Phone number is required.')
                     return;
@@ -79,7 +114,8 @@
                     zip: customerShippingAddress.postcode,
                     phone: customerShippingAddress.phone,
                     country: customerShippingAddress.country,
-                    email: prestashop.customer.email
+                    email: prestashop.customer.email,
+                    browser_info: collectBrowserInfo(),
                 };
 
                 try {

@@ -66,7 +66,7 @@ class Monri extends PaymentModule
     {
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
-        $this->version = '1.4.2';
+        $this->version = '1.4.3';
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
@@ -274,6 +274,11 @@ class Monri extends PaymentModule
                 'type' => 'hidden',
                 'value' => $transaction_type,
             ],
+            'supported_payment_methods' => [
+                'name' => 'supported_payment_methods',
+                'type' => 'hidden',
+                'value' => 'card',
+            ],
             'number_of_installments' => [
                 'name' => 'number_of_installments',
                 'type' => 'hidden',
@@ -461,7 +466,8 @@ class Monri extends PaymentModule
             'scriptUrl' => $script_url,
             'authenticityToken' => $authenticity_token,
             'customerAddressId' => $cart->id_address_delivery,
-            'allowInstallments' => $allow_installments
+            'allowInstallments' => $allow_installments,
+            'customerIp' => Tools::getRemoteAddr(),
         ]);
 
         $externalOption
