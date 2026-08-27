@@ -1,8 +1,8 @@
 <body>
 
-<form action="{$action}" id="monri-payment-form" method="post">
+<form action="{$action|escape:'html'}" id="monri-payment-form" method="post">
     {foreach from=$monri_inputs item=input}
-        <input type="hidden" name="{$input.name}" id="{$input.name}" value="{$input.value}"/>
+        <input type="hidden" name="{$input.name|escape:'html'}" id="{$input.name|escape:'html'}" value="{$input.value|escape:'html'}"/>
     {/foreach}
 </form>
 <noscript>

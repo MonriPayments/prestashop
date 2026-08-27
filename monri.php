@@ -718,6 +718,26 @@ class Monri extends PaymentModule
     }
 
     /**
+     * Absolute link to this module's configuration page.
+     *
+     * AdminController::$currentIndex is a *relative* url ("index.php?controller=AdminModules"). Since
+     * PrestaShop 8 the configuration page is served by the Symfony route admin_module_configure_action
+     * (".../modules/manage/action/configure/monri"), so the browser resolves that relative url against
+     * ".../modules/manage/action/" and the form posts to a path that does not exist -> 404.
+     * Link::getAdminLink() goes through the legacy url converter and returns the migrated absolute url.
+     *
+     * @return string
+     */
+    protected function getConfigurationPageLink()
+    {
+        return $this->context->link->getAdminLink('AdminModules', false, [], [
+            'configure' => $this->name,
+            'tab_module' => $this->tab,
+            'module_name' => $this->name,
+        ]);
+    }
+
+    /**
      * @return mixed
      */
     public function displayForm()
@@ -732,7 +752,6 @@ class Monri extends PaymentModule
         $fields_form[0]['form'] = [
             'legend' => [
                 'title' => $this->l('General Settings'),
-                'image' => '../img/admin/edit.gif',
             ],
             'input' => [
                 [
@@ -881,7 +900,7 @@ class Monri extends PaymentModule
         $helper->module = $this;
         $helper->name_controller = $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
+        $helper->currentIndex = $this->getConfigurationPageLink();
 
         // Language
         $helper->default_form_language = $default_lang;
@@ -895,10 +914,10 @@ class Monri extends PaymentModule
         $helper->toolbar_btn = [
             'save' => [
                 'desc' => $this->l('Save'),
-                'href' => AdminController::$currentIndex . '&configure=' . $this->name . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+                'href' => $this->getConfigurationPageLink() . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules'),
             ],
             'back' => [
-                'href' => AdminController::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+                'href' => $this->context->link->getAdminLink('AdminModulesManage'),
                 'desc' => $this->l('Back to list'),
             ],
         ];
