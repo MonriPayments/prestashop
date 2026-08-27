@@ -115,8 +115,7 @@ class Monri extends PaymentModule
         }
 
         return parent::install()
-            && $this->registerHook('paymentOptions')
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentOptions');
     }
 
     /**
@@ -154,15 +153,6 @@ class Monri extends PaymentModule
         }
 
         return $payment_options;
-    }
-
-    public function hookPaymentReturn()
-    {
-        if (!$this->active) {
-            return null;
-        }
-
-        return;
     }
 
     public function checkCurrency($cart)
@@ -256,7 +246,6 @@ class Monri extends PaymentModule
             'order_number' => [
                 'name' => 'order_number',
                 'type' => 'hidden',
-                // TODO: discuss this
                 'value' => $order_number,
             ],
             'currency' => [
@@ -493,7 +482,6 @@ class Monri extends PaymentModule
             'ShoppingCartID' => [
                 'name' => 'ShoppingCartID',
                 'type' => 'hidden',
-                // TODO: discuss this
                 'value' => $cart_id,
             ],
             'Lang' => [
