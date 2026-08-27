@@ -50,6 +50,15 @@ class MonriConstants
 
     const MONRI_COMPONENTS_SCRIPT_ENDPOINT_TEST = 'https://ipgtest.monri.com/dist/components.js';
     const MONRI_COMPONENTS_SCRIPT_ENDPOINT = 'https://ipg.monri.com/dist/components.js';
+
+    /**
+     * The oldest PrestaShop release this module supports.
+     *
+     * Single source of truth for both ps_versions_compliancy and the install-time check, so the
+     * two cannot drift apart again. 1.7 is the floor because the module hooks paymentOptions and
+     * builds PrestaShop\PrestaShop\Core\Payment\PaymentOption, neither of which exists in 1.6.
+     */
+    const MINIMUM_PRESTASHOP_VERSION = '1.7';
 }
 
 class Monri extends PaymentModule
@@ -67,7 +76,7 @@ class Monri extends PaymentModule
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
         $this->version = '1.4.3';
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => MonriConstants::MINIMUM_PRESTASHOP_VERSION, 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
         $this->is_eu_compatible = 1;
@@ -94,7 +103,7 @@ class Monri extends PaymentModule
      */
     public function isPrestaShopSupportedVersion()
     {
-        return version_compare(_PS_VERSION_, '1.6', '>');
+        return version_compare(_PS_VERSION_, MonriConstants::MINIMUM_PRESTASHOP_VERSION, '>=');
     }
 
     public function install()
@@ -174,21 +183,7 @@ class Monri extends PaymentModule
 
     public function getMonriWebPayExternalPaymentOption($params)
     {
-        $externalOption = null;
-
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $customer = $this->context->customer;
         $cart = $this->context->cart;
@@ -385,20 +380,7 @@ class Monri extends PaymentModule
 
     public function getMonriComponentsExternalPaymentOption()
     {
-
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $url = $mode == MonriConstants::MODE_PROD ?
@@ -481,19 +463,7 @@ class Monri extends PaymentModule
 
     public function getMonriWSPayExternalPaymentOption()
     {
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $customer = $this->context->customer;
         $cart = $this->context->cart;
