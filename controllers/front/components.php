@@ -42,12 +42,17 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             if (empty($transaction)) {
                 return $this->setErrorTemplate('Missing Monri transaction.');
             }
-            $order_number = $transaction['order_number'] ?? null;
+            $posted_order_number = $transaction['order_number'] ?? null;
             $cookie_order_number = Context::getContext()->cookie->__get('order_number') ?? null;
 
-            if (!isset($order_number, $cookie_order_number) || $order_number !== $cookie_order_number) {
+            if (!isset($posted_order_number, $cookie_order_number) || $posted_order_number !== $cookie_order_number) {
                 return $this->setErrorTemplate('Invalid order number.');
             }
+
+            // From here on the cookie value is the only order number we act on: it was written server
+            // side when the payment was authorized, so unlike the posted one it cannot be chosen by
+            // whoever is sending this request.
+            $order_number = $cookie_order_number;
 
             $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
             $comp_precision = 0;
@@ -56,11 +61,15 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Invalid payment option or invalid context.');
             }
 
-            $response_code = $transaction['transaction_response']['response_code'] ?? null;
+            $monri_transaction = $this->fetchApprovedTransaction($order_number);
 
-            if ($response_code != '0000') {
-                return $this->setErrorTemplate("Response not authorized - response code is $response_code.");
+            if ($monri_transaction === null) {
+                return $this->setErrorTemplate(
+                    'Payment could not be confirmed with Monri. No order was created - if you were charged, ' .
+                    "please contact us quoting reference $order_number."
+                );
             }
+
             $order = Order::getByCartId($cart_id);
             if ($order) {
                 return $this->setErrorTemplate('Order with this order id already exists.');
@@ -94,21 +103,28 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             $extra_vars = [];
 
             foreach ($trx_fields as $field) {
-                if (isset($transaction['transaction_response'][$field])) {
+                if (isset($monri_transaction[$field])) {
+                    $extra_vars[$field] = $monri_transaction[$field];
+                } elseif (isset($transaction['transaction_response'][$field])) {
                     $extra_vars[$field] = $transaction['transaction_response'][$field];
                 }
             }
 
-            if (isset($extra_vars['order_number'])) {
-                $extra_vars['transaction_id'] = $extra_vars['order_number'];
-            }
+            // Capture, void and refund are keyed off this later, so it has to be the verified value.
+            $extra_vars['transaction_id'] = $order_number;
 
             $currencyId = $cart->id_currency;
             $customer = new \Customer($cart->id_customer);
-            $amount = $transaction['amount'];
+            $amount = (int) $monri_transaction['amount'];
+            $currency = new Currency($currencyId);
 
+            if (strcasecmp($monri_transaction['currency'], $currency->iso_code) !== 0) {
+                return $this->setErrorTemplate(
+                    'Paid currency and cart currency are not the same. No order was created - if you were ' .
+                    "charged, please contact us quoting reference $order_number."
+                );
+            }
 
-            // TODO: check if already approved
             $this->module->validateOrder(
                 $cart->id,
                 Monri::getMonriTransactionStateId(),
@@ -148,6 +164,57 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             PrestaShopLogger::addLog($e->getMessage());
             $this->setErrorTemplate('Something went wrong in order creation. Please contact the administrator.');
         }
+    }
+
+    /**
+     * Ask Monri whether $order_number was really paid.
+     *
+     * The browser posts the confirmPayment result to this controller, so every field in it - the
+     * response code and the amount included - is under the shopper's control. Without this call a
+     * hand-crafted POST carrying response_code 0000 and a matching amount is enough to create a paid
+     * order with no money behind it. /orders/show is signed with credentials the browser never sees,
+     * so its answer is the only one we act on.
+     *
+     * @param string $order_number
+     *
+     * @return array|null the trusted transaction fields, or null when Monri could not be reached or
+     *                    reports the order as anything other than approved
+     */
+    private function fetchApprovedTransaction($order_number)
+    {
+        $api = new MonriApi();
+        $response = $api->ordersShow($order_number);
+
+        if ($response === false) {
+            return null;
+        }
+
+        $transaction = [];
+
+        foreach ($response->children() as $name => $value) {
+            // The API answers in kebab-case (response-code), the rest of the module speaks snake_case.
+            $transaction[str_replace('-', '_', $name)] = (string) $value;
+        }
+
+        $status = $transaction['status'] ?? '';
+        $response_code = $transaction['response_code'] ?? '';
+
+        if ($status !== 'approved' || $response_code !== '0000') {
+            PrestaShopLogger::addLog(
+                "Monri reports order $order_number as not approved - status '$status', response code '$response_code'.",
+                3
+            );
+
+            return null;
+        }
+
+        if (!isset($transaction['amount'], $transaction['currency'])) {
+            PrestaShopLogger::addLog("Monri response for order $order_number is missing amount or currency.", 3);
+
+            return null;
+        }
+
+        return $transaction;
     }
 
     private function setErrorTemplate($message)

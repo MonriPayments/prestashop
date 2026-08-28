@@ -61,6 +61,113 @@ class MonriConstants
     const MINIMUM_PRESTASHOP_VERSION = '1.7';
 }
 
+/**
+ * Server-to-server client for Monri's XML API.
+ *
+ * Requests are authenticated with the merchant's authenticity token plus a SHA1 digest over the
+ * merchant key. Neither of those ever reaches the browser, so an answer from this class is the only
+ * statement about a payment that cannot have been forged by the shopper.
+ */
+class MonriApi
+{
+    /**
+     * @var bool
+     */
+    private $test_mode;
+
+    public function __construct()
+    {
+        $this->test_mode = Configuration::get(MonriConstants::KEY_MODE) !== MonriConstants::MODE_PROD;
+    }
+
+    /**
+     * Read the authoritative state of an order from Monri.
+     *
+     * @param string $order_number the order_number sent in the /v2/payment/new authorize request
+     *
+     * @return SimpleXMLElement|false false when Monri could not be reached or answered with something
+     *                                that is not parseable XML
+     */
+    public function ordersShow($order_number)
+    {
+        $payload = new SimpleXMLElement('<order></order>');
+        $payload->addChild('order-number', $order_number);
+        $payload->addChild('authenticity-token', $this->getAuthenticityToken());
+        $payload->addChild('digest', $this->digest($order_number));
+
+        return $this->request('/orders/show', $payload);
+    }
+
+    /**
+     * @param string $path
+     * @param SimpleXMLElement $body
+     *
+     * @return SimpleXMLElement|false
+     */
+    private function request($path, SimpleXMLElement $body)
+    {
+        $base_url = $this->test_mode ? MonriConstants::MONRI_WEBPAY_TEST_URL : MonriConstants::MONRI_WEBPAY_PRODUCTION_URL;
+
+        $options = [
+            'http' => [
+                'method' => 'POST',
+                'header' => [
+                    'Content-Type: application/xml',
+                    'Accept: application/xml',
+                    'User-Agent: Monri PrestaShop',
+                ],
+                'content' => $body->asXML(),
+                'timeout' => 15,
+                // Read the body on 4xx/5xx as well, otherwise a rejected request is indistinguishable
+                // from a network failure and the log says nothing useful.
+                'ignore_errors' => true,
+            ],
+        ];
+
+        $response = Tools::file_get_contents($base_url . $path, false, stream_context_create($options));
+
+        if (!$response) {
+            PrestaShopLogger::addLog("Monri API request to $path failed - no response.", 3);
+
+            return false;
+        }
+
+        try {
+            return new SimpleXMLElement($response);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog("Monri API request to $path returned an unparseable body: $response", 3);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param string $order_number
+     *
+     * @return string
+     */
+    private function digest($order_number)
+    {
+        $merchant_key = Configuration::get(
+            $this->test_mode ? MonriConstants::KEY_MERCHANT_KEY_TEST : MonriConstants::KEY_MERCHANT_KEY_PROD
+        );
+
+        return hash('SHA1', $merchant_key . $order_number);
+    }
+
+    /**
+     * @return string
+     */
+    private function getAuthenticityToken()
+    {
+        return Configuration::get(
+            $this->test_mode ?
+                MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST :
+                MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD
+        );
+    }
+}
+
 class Monri extends PaymentModule
 {
     protected $_html = '';
