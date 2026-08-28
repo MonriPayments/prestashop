@@ -106,6 +106,25 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
             $amount = (float) str_replace(',', '.', Tools::getValue('Amount'));
             $id_order_state = Monri::getMonriTransactionStateId();
 
+            /*
+                PaymentModule::validateOrder runs this same comparison itself, but only when the target
+                state is logable - which the Authorize state is not - so on Authorize the cart can be
+                changed after the gateway redirect and nothing in core notices. Deciding the state here
+                rather than correcting it afterwards matters: validateOrder sends the order confirmation
+                email as part of the same call, and it only skips it when the state it was handed is
+                already PS_OS_ERROR. The order is still created either way, so a genuine payment against
+                a changed cart leaves the merchant something to reconcile against.
+             */
+            // Compared against getOrderTotal() because that is what WSPaySubmit charged. getCartTotalPrice()
+            // would pick tax-inc or tax-exc from the customer's group, so on a tax-exc shop it disagreed
+            // with the charged amount on every order.
+            $amount_mismatch = number_format($amount, $comp_precision)
+                !== number_format($cart->getOrderTotal(), $comp_precision);
+
+            if ($amount_mismatch) {
+                $id_order_state = (int) Configuration::get('PS_OS_ERROR');
+            }
+
             // Presta shop creates order only on success redirect
             $this->module->validateOrder(
                 $cart->id,
@@ -119,17 +138,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 $customer->secure_key
             );
 
-
-            /*
-                Additional check since Authorize order_status doesn't have logable flag - paid amount check in
-                classes/PaymentModule.php has additional condition $order_status->logable. Since this flag is not set
-                on Authorize, amount validation is skipped and cart items can be changed after gateway redirection
-             */
-            if ((number_format($amount, $comp_precision)) !== (number_format($cart->getCartTotalPrice(), $comp_precision))) {
+            if ($amount_mismatch) {
                 $order = Order::getByCartId($cart_id);
-                $order->setCurrentState(Configuration::get('PS_OS_ERROR'));
-                $order->note = "Amount paid and cart amount are not the same.";
+                $order->note = 'Amount paid and cart amount are not the same.';
                 $order->save();
+
                 return $this->setErrorTemplate('Invalid amount.');
             }
 
