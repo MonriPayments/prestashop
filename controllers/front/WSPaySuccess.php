@@ -48,7 +48,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Shopping cart ID is missing.');
             }
             $order_number = Tools::getValue('ShoppingCartID');
-            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+            $cart_id = (int) (($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number);
 
             if (empty($cart_id)) {
                 return $this->setErrorTemplate('Invalid shopping cart ID.');
@@ -86,7 +86,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 'Success',
                 'ApprovalCode',
                 'ErrorMessage',
-                'PaymentPlan'
+                'PaymentPlan',
             ];
 
             $extra_vars = [];
@@ -135,7 +135,7 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                 $extra_vars,
                 $currency_id,
                 false,
-                $customer->secure_key
+                $customer->secure_key,
             );
 
             if ($amount_mismatch) {
@@ -158,11 +158,11 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
                     'order-confirmation',
                     $this->ssl,
                     null,
-                    'id_cart=' . $cart->id .
-                    '&id_module=' . $this->module->id .
-                    '&id_order=' . $this->module->currentOrder .
-                    '&key=' . $customer->secure_key
-                )
+                    'id_cart=' . $cart->id
+                    . '&id_module=' . $this->module->id
+                    . '&id_order=' . $this->module->currentOrder
+                    . '&key=' . $customer->secure_key,
+                ),
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
@@ -187,12 +187,12 @@ class MonriWSPaySuccessModuleFrontController extends ModuleFrontController
 
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $shop_id = Configuration::get(
-            $mode == MonriConstants::MODE_PROD ?
-                MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST
+            $mode == MonriConstants::MODE_PROD
+                ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST,
         );
         $secret_key = Configuration::get(
-            $mode == MonriConstants::MODE_PROD ?
-                MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+            $mode == MonriConstants::MODE_PROD
+                ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST,
         );
 
         $digest_parts = [

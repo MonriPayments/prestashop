@@ -54,7 +54,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             // whoever is sending this request.
             $order_number = $cookie_order_number;
 
-            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+            $cart_id = (int) (($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number);
             $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
@@ -65,8 +65,8 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
 
             if ($monri_transaction === null) {
                 return $this->setErrorTemplate(
-                    'Payment could not be confirmed with Monri. No order was created - if you were charged, ' .
-                    "please contact us quoting reference $order_number."
+                    'Payment could not be confirmed with Monri. No order was created - if you were charged, '
+                    . "please contact us quoting reference $order_number.",
                 );
             }
 
@@ -97,7 +97,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 'enrollment',
                 'issuer',
                 'three_ds_version',
-                'redirect_url'
+                'redirect_url',
             ];
 
             $extra_vars = [];
@@ -120,8 +120,8 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
 
             if (strcasecmp($monri_transaction['currency'], $currency->iso_code) !== 0) {
                 return $this->setErrorTemplate(
-                    'Paid currency and cart currency are not the same. No order was created - if you were ' .
-                    "charged, please contact us quoting reference $order_number."
+                    'Paid currency and cart currency are not the same. No order was created - if you were '
+                    . "charged, please contact us quoting reference $order_number.",
                 );
             }
 
@@ -150,9 +150,9 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 $this->module->displayName,
                 null,
                 $extra_vars,
-                (int)$currencyId,
+                (int) $currencyId,
                 false,
-                $customer->secure_key
+                $customer->secure_key,
             );
 
             if ($amount_mismatch) {
@@ -170,8 +170,8 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                     'order-confirmation',
                     $this->ssl,
                     null,
-                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
-                )
+                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key,
+                ),
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
@@ -215,7 +215,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
         if ($status !== 'approved' || $response_code !== '0000') {
             PrestaShopLogger::addLog(
                 "Monri reports order $order_number as not approved - status '$status', response code '$response_code'.",
-                3
+                3,
             );
 
             return null;

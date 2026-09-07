@@ -37,8 +37,8 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         $amount = (int) round($cart->getOrderTotal() * 100);
-        $form_url = $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
+        $form_url = $mode == MonriConstants::MODE_PROD
+            ? MonriConstants::MONRI_WEBPAY_PRODUCTION_URL : MonriConstants::MONRI_WEBPAY_TEST_URL;
 
         if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
             $this->errors[] = $this->module->l('Something went wrong, please check information and try again.', 'webPaySubmit');
@@ -76,7 +76,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'whitelisted_pan_tokens',
             'custom_attributes',
             'cancel_url_override',
-            'success_url_override'
+            'success_url_override',
         ];
 
 
@@ -86,14 +86,14 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             $inputs[$item] = [
                 'name' => $item,
                 'type' => 'hidden',
-                'value' => Tools::getValue($prefix . '_' . $item)
+                'value' => Tools::getValue($prefix . '_' . $item),
             ];
         }
 
         $inputs['amount'] = [
             'name' => 'amount',
             'type' => 'hidden',
-            'value' => $amount
+            'value' => $amount,
         ];
 
         $order_number = $inputs['order_number']['value'];
@@ -105,12 +105,12 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             $inputs['number_of_installments'] = [
                 'name' => 'number_of_installments',
                 'type' => 'hidden',
-                'value' => $number_of_installments
+                'value' => $number_of_installments,
             ];
             $inputs['force_installments'] = [
                 'name' => 'force_installments',
                 'type' => 'hidden',
-                'value' => true
+                'value' => true,
             ];
         }
 
@@ -120,7 +120,7 @@ class MonriwebPaySubmitModuleFrontController extends ModuleFrontController
             'value' => $this->calculateFormV2Digest($merchant_key, $order_number, $amount, $inputs['currency']['value']),
         ];
 
-		$customer_ip_address = Tools::getRemoteAddr();
+        $customer_ip_address = Tools::getRemoteAddr();
         $this->context->smarty->assign("monri_inputs", $inputs);
 
         $this->context->smarty->assign('action', "$form_url/v2/form");

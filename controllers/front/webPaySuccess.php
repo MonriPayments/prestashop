@@ -38,7 +38,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
             $mode = Configuration::get(MonriConstants::KEY_MODE);
             $response_code = Tools::getValue('response_code');
             $order_number = Tools::getValue('order_number');
-            $cart_id = (int) ( ($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number );
+            $cart_id = (int) (($mode === MonriConstants::MODE_TEST) ? explode('_', $order_number)[0] : $order_number);
             $comp_precision = 0;
 
             if (!$this->checkIfContextIsValid() || !$this->checkIfPaymentOptionIsAvailable()) {
@@ -75,7 +75,7 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 'digest',
                 'pan_token',
                 'original_amount',
-                'number_of_installments'
+                'number_of_installments',
             ];
 
             $extra_vars = [];
@@ -127,9 +127,9 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                 $this->module->displayName,
                 null,
                 $extra_vars,
-                (int)$currencyId,
+                (int) $currencyId,
                 false,
-                $customer->secure_key
+                $customer->secure_key,
             );
 
             if ($amount_mismatch) {
@@ -151,8 +151,8 @@ class MonriwebPaySuccessModuleFrontController extends ModuleFrontController
                     'order-confirmation',
                     $this->ssl,
                     null,
-                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key
-                )
+                    'id_cart=' . $cart->id . '&id_module=' . $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key,
+                ),
             );
         } catch (Exception $e) {
             PrestaShopLogger::addLog($e->getMessage());
