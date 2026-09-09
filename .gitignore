@@ -1,2 +1,10 @@
 docker-data
 monri.zip
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

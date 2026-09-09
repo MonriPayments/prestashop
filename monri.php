@@ -8,48 +8,164 @@ if (!defined('_PS_VERSION_')) {
 
 class MonriConstants
 {
-    const MODE_PROD = 'prod';
-    const MODE_TEST = 'test';
+    public const MODE_PROD = 'prod';
+    public const MODE_TEST = 'test';
 
-    const TRANSACTION_TYPE_AUTHORIZE = 'authorize';
-    const TRANSACTION_TYPE_CAPTURE = 'capture';
-    const MONRI_TRANSACTION_TYPE = 'MONRI_TRANSACTION_TYPE';
-    const MONRI_PAYMENT_GATEWAY_SERVICE_TYPE = 'MONRI_PAYMENT_GATEWAY_SERVICE_TYPE';
+    public const TRANSACTION_TYPE_AUTHORIZE = 'authorize';
+    public const TRANSACTION_TYPE_CAPTURE = 'capture';
+    public const MONRI_TRANSACTION_TYPE = 'MONRI_TRANSACTION_TYPE';
+    public const MONRI_PAYMENT_GATEWAY_SERVICE_TYPE = 'MONRI_PAYMENT_GATEWAY_SERVICE_TYPE';
 
-    const PAYMENT_TYPE_MONRI_WEBPAY = 'monri_webpay';
+    public const PAYMENT_TYPE_MONRI_WEBPAY = 'monri_webpay';
 
-    const PAYMENT_TYPE_MONRI_WSPAY = 'monri_wspay';
+    public const PAYMENT_TYPE_MONRI_WSPAY = 'monri_wspay';
 
-    const PAYMENT_TYPE_MONRI_COMPONENTS = 'monri_components';
+    public const PAYMENT_TYPE_MONRI_COMPONENTS = 'monri_components';
 
-    const MONRI_WSPAY_VERSION = '2.0';
+    public const MONRI_WSPAY_VERSION = '2.0';
 
-    const KEY_MODE = 'MONRI_MODE';
-    const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
-    const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
-    const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
+    public const KEY_MODE = 'MONRI_MODE';
+    public const KEY_MERCHANT_KEY_PROD = 'MONRI_MERCHANT_KEY_PROD';
+    public const KEY_MERCHANT_KEY_TEST = 'MONRI_MERCHANT_KEY_TEST';
+    public const KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD = 'MONRI_AUTHENTICITY_TOKEN_PROD';
+    public const KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST = 'MONRI_AUTHENTICITY_TOKEN_TEST';
 
-    const MONRI_INSTALLMENTS = 'MONRI_INSTALLMENTS';
+    public const MONRI_INSTALLMENTS = 'MONRI_INSTALLMENTS';
 
-    const MONRI_INSTALLMENTS_YES = 'MONRI_INSTALLMENTS_YES';
+    public const MONRI_INSTALLMENTS_YES = 'MONRI_INSTALLMENTS_YES';
 
-    const MONRI_INSTALLMENTS_NO = 'MONRI_INSTALLMENTS_NO';
+    public const MONRI_INSTALLMENTS_NO = 'MONRI_INSTALLMENTS_NO';
 
-    const MONRI_MAX_INSTALLMENT_COUNT = 'MONRI_MAX_INSTALLMENT_COUNT';
+    public const MONRI_MAX_INSTALLMENT_COUNT = 'MONRI_MAX_INSTALLMENT_COUNT';
 
-    const MONRI_ALLOWED_INSTALLMENTS = [6, 12, 24, 36];
+    public const MONRI_ALLOWED_INSTALLMENTS = [6, 12, 24, 36];
 
-    const MONRI_WEBPAY_PRODUCTION_URL = 'https://ipg.monri.com';
-    const MONRI_WEBPAY_TEST_URL = 'https://ipgtest.monri.com';
-    const MONRI_WSPAY_PRODUCTION_URL = 'https://form.wspay.biz/authorization.aspx';
-    const MONRI_WSPAY_TEST_URL = 'https://formtest.wspay.biz/authorization.aspx';
+    public const MONRI_WEBPAY_PRODUCTION_URL = 'https://ipg.monri.com';
+    public const MONRI_WEBPAY_TEST_URL = 'https://ipgtest.monri.com';
+    public const MONRI_WSPAY_PRODUCTION_URL = 'https://form.wspay.biz/authorization.aspx';
+    public const MONRI_WSPAY_TEST_URL = 'https://formtest.wspay.biz/authorization.aspx';
 
-    const MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT_TEST = 'https://ipgtest.monri.com/v2/payment/new';
-    const MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT = 'https://ipg.monri.com/v2/payment/new';
+    public const MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT_TEST = 'https://ipgtest.monri.com/v2/payment/new';
+    public const MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT = 'https://ipg.monri.com/v2/payment/new';
 
-    const MONRI_COMPONENTS_SCRIPT_ENDPOINT_TEST = 'https://ipgtest.monri.com/dist/components.js';
-    const MONRI_COMPONENTS_SCRIPT_ENDPOINT = 'https://ipg.monri.com/dist/components.js';
+    public const MONRI_COMPONENTS_SCRIPT_ENDPOINT_TEST = 'https://ipgtest.monri.com/dist/components.js';
+    public const MONRI_COMPONENTS_SCRIPT_ENDPOINT = 'https://ipg.monri.com/dist/components.js';
+
+    /**
+     * The oldest PrestaShop release this module supports.
+     *
+     * Single source of truth for both ps_versions_compliancy and the install-time check, so the
+     * two cannot drift apart again. 1.7 is the floor because the module hooks paymentOptions and
+     * builds PrestaShop\PrestaShop\Core\Payment\PaymentOption, neither of which exists in 1.6.
+     */
+    public const MINIMUM_PRESTASHOP_VERSION = '1.7';
+}
+
+/**
+ * Server-to-server client for Monri's XML API.
+ *
+ * Requests are authenticated with the merchant's authenticity token plus a SHA1 digest over the
+ * merchant key. Neither of those ever reaches the browser, so an answer from this class is the only
+ * statement about a payment that cannot have been forged by the shopper.
+ */
+class MonriApi
+{
+    /**
+     * @var bool
+     */
+    private $test_mode;
+
+    public function __construct()
+    {
+        $this->test_mode = Configuration::get(MonriConstants::KEY_MODE) !== MonriConstants::MODE_PROD;
+    }
+
+    /**
+     * Read the authoritative state of an order from Monri.
+     *
+     * @param string $order_number the order_number sent in the /v2/payment/new authorize request
+     *
+     * @return SimpleXMLElement|false false when Monri could not be reached or answered with something
+     *                                that is not parseable XML
+     */
+    public function ordersShow($order_number)
+    {
+        $payload = new SimpleXMLElement('<order></order>');
+        $payload->addChild('order-number', $order_number);
+        $payload->addChild('authenticity-token', $this->getAuthenticityToken());
+        $payload->addChild('digest', $this->digest($order_number));
+
+        return $this->request('/orders/show', $payload);
+    }
+
+    /**
+     * @param string $path
+     * @param SimpleXMLElement $body
+     *
+     * @return SimpleXMLElement|false
+     */
+    private function request($path, SimpleXMLElement $body)
+    {
+        $base_url = $this->test_mode ? MonriConstants::MONRI_WEBPAY_TEST_URL : MonriConstants::MONRI_WEBPAY_PRODUCTION_URL;
+
+        $options = [
+            'http' => [
+                'method' => 'POST',
+                'header' => [
+                    'Content-Type: application/xml',
+                    'Accept: application/xml',
+                    'User-Agent: Monri PrestaShop',
+                ],
+                'content' => $body->asXML(),
+                'timeout' => 15,
+                // Read the body on 4xx/5xx as well, otherwise a rejected request is indistinguishable
+                // from a network failure and the log says nothing useful.
+                'ignore_errors' => true,
+            ],
+        ];
+
+        $response = Tools::file_get_contents($base_url . $path, false, stream_context_create($options));
+
+        if (!$response) {
+            PrestaShopLogger::addLog("Monri API request to $path failed - no response.", 3);
+
+            return false;
+        }
+
+        try {
+            return new SimpleXMLElement($response);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog("Monri API request to $path returned an unparseable body: $response", 3);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param string $order_number
+     *
+     * @return string
+     */
+    private function digest($order_number)
+    {
+        $merchant_key = Configuration::get(
+            $this->test_mode ? MonriConstants::KEY_MERCHANT_KEY_TEST : MonriConstants::KEY_MERCHANT_KEY_PROD,
+        );
+
+        return hash('SHA1', $merchant_key . $order_number);
+    }
+
+    /**
+     * @return string
+     */
+    private function getAuthenticityToken()
+    {
+        return Configuration::get(
+            $this->test_mode
+                ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST
+                : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD,
+        );
+    }
 }
 
 class Monri extends PaymentModule
@@ -66,8 +182,8 @@ class Monri extends PaymentModule
     {
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
-        $this->version = '1.4.3';
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        $this->version = '1.5.0';
+        $this->ps_versions_compliancy = ['min' => MonriConstants::MINIMUM_PRESTASHOP_VERSION, 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
         $this->is_eu_compatible = 1;
@@ -94,7 +210,7 @@ class Monri extends PaymentModule
      */
     public function isPrestaShopSupportedVersion()
     {
-        return version_compare(_PS_VERSION_, '1.6', '>');
+        return version_compare(_PS_VERSION_, MonriConstants::MINIMUM_PRESTASHOP_VERSION, '>=');
     }
 
     public function install()
@@ -106,8 +222,7 @@ class Monri extends PaymentModule
         }
 
         return parent::install()
-            && $this->registerHook('paymentOptions')
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentOptions');
     }
 
     /**
@@ -147,15 +262,6 @@ class Monri extends PaymentModule
         return $payment_options;
     }
 
-    public function hookPaymentReturn()
-    {
-        if (!$this->active) {
-            return null;
-        }
-
-        return;
-    }
-
     public function checkCurrency($cart)
     {
         $currency_order = new Currency($cart->id_currency);
@@ -174,21 +280,7 @@ class Monri extends PaymentModule
 
     public function getMonriWebPayExternalPaymentOption($params)
     {
-        $externalOption = null;
-
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $customer = $this->context->customer;
         $cart = $this->context->cart;
@@ -198,8 +290,8 @@ class Monri extends PaymentModule
         $form_url = $this->context->link->getModuleLink($this->name, 'webPaySubmit', [], true);
         $success_url = $this->context->link->getModuleLink($this->name, 'webPaySuccess', [], true);
         $cancel_url = $this->context->link->getModuleLink($this->name, 'cancel', [], true);
-        $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
-        'purchase' : 'authorize';
+        $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE
+        ? 'purchase' : 'authorize';
 
         $address = new Address($cart->id_address_delivery);
 
@@ -261,7 +353,6 @@ class Monri extends PaymentModule
             'order_number' => [
                 'name' => 'order_number',
                 'type' => 'hidden',
-                // TODO: discuss this
                 'value' => $order_number,
             ],
             'currency' => [
@@ -385,31 +476,18 @@ class Monri extends PaymentModule
 
     public function getMonriComponentsExternalPaymentOption()
     {
-
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $mode = Configuration::get(MonriConstants::KEY_MODE);
-        $url = $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT : MonriConstants::MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT_TEST;
-        $script_url = $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_COMPONENTS_SCRIPT_ENDPOINT : MonriConstants::MONRI_COMPONENTS_SCRIPT_ENDPOINT_TEST;
+        $url = $mode == MonriConstants::MODE_PROD
+            ? MonriConstants::MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT : MonriConstants::MONRI_COMPONENTS_AUTHORIZATION_ENDPOINT_TEST;
+        $script_url = $mode == MonriConstants::MODE_PROD
+            ? MonriConstants::MONRI_COMPONENTS_SCRIPT_ENDPOINT : MonriConstants::MONRI_COMPONENTS_SCRIPT_ENDPOINT_TEST;
         $cart = $this->context->cart;
         $amount_in_minor_units = (int) round($cart->getCartTotalPrice() * 100);
         $currency_order = new Currency($cart->id_currency);
-        $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE ?
-            'purchase' : 'authorize';
+        $transaction_type = Configuration::get(MonriConstants::MONRI_TRANSACTION_TYPE) === MonriConstants::TRANSACTION_TYPE_CAPTURE
+            ? 'purchase' : 'authorize';
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
         //todo: save client secret in session so that if customer refreshes page we do not have to make another request
@@ -423,17 +501,17 @@ class Monri extends PaymentModule
             'order_number'     => $order_number,
             'currency'         => $currency_order->iso_code,
             'transaction_type' => $transaction_type,
-            'order_info'       => 'prestashop order'
+            'order_info'       => 'prestashop order',
         ];
 
         $data = json_encode($data);
         $timestamp = time();
         $digest    = hash(
             'sha512',
-            $merchant_key .
-            $timestamp .
-            $authenticity_token .
-            $data
+            $merchant_key
+            . $timestamp
+            . $authenticity_token
+            . $data,
         );
 
         $authorization = "WP3-v2 {$authenticity_token} $timestamp $digest";
@@ -448,8 +526,8 @@ class Monri extends PaymentModule
                     'Authorization: ' . $authorization,
                 ],
                 'content' => $data,
-                'timeout' => 10
-            ]
+                'timeout' => 10,
+            ],
         ];
 
         $response = Tools::file_get_contents($url, false, stream_context_create($options));
@@ -481,19 +559,7 @@ class Monri extends PaymentModule
 
     public function getMonriWSPayExternalPaymentOption()
     {
-        if (version_compare(_PS_VERSION_, '1.7.0.0', '>=')) {
-            $externalOption = new PaymentOption();
-        } else {
-            if (!class_exists('Core_Business_Payment_PaymentOption')) {
-                throw new Exception(sprintf('Class: Core_Business_Payment_PaymentOption not found or does not exist in PrestaShop v.%s', _PS_VERSION_));
-            }
-
-            $externalOption = new Core_Business_Payment_PaymentOption();
-        }
-
-        if (!$externalOption) {
-            throw new Exception('Instance of PaymentOption not created. Check your PrestaShop version.');
-        }
+        $externalOption = new PaymentOption();
 
         $customer = $this->context->customer;
         $cart = $this->context->cart;
@@ -523,7 +589,6 @@ class Monri extends PaymentModule
             'ShoppingCartID' => [
                 'name' => 'ShoppingCartID',
                 'type' => 'hidden',
-                // TODO: discuss this
                 'value' => $cart_id,
             ],
             'Lang' => [
@@ -587,9 +652,9 @@ class Monri extends PaymentModule
                 'value' => $customer->email,
             ],
             'PaymentPlan' => [
-	            'name' => 'PaymentPlan',
-	            'type' => 'hidden',
-	            'value' => '0000',
+                'name' => 'PaymentPlan',
+                'type' => 'hidden',
+                'value' => '0000',
             ],
         ];
 
@@ -641,18 +706,18 @@ class Monri extends PaymentModule
         $output = null;
 
         // validating the input
-        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
+        if ((empty($monri_webpay_merchant_key) || !Validate::isGenericName($monri_webpay_merchant_key))
+            && ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY)) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Merchant Key/Shop ID $mode"));
         }
 
         // validating the input
-        if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token)) &&
-            ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS ||
-             $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY )) {
+        if ((empty($monri_webpay_authenticity_token) || !Validate::isGenericName($monri_webpay_authenticity_token))
+            && ($payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS
+             || $payment_type == MonriConstants::PAYMENT_TYPE_MONRI_WSPAY)) {
             $output .= $this->displayError($this->l("Invalid Configuration value for Monri Api Key/Secret $mode"));
         }
 
@@ -687,9 +752,9 @@ class Monri extends PaymentModule
                 $output .= $this->displayError($this->l("Invalid Mode, expected: prod or test got '$mode'"));
 
                 return $output . $this->displayForm();
-            } elseif ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY &&
-                      $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY &&
-                      $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS) {
+            } elseif ($payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WEBPAY
+                      && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_WSPAY
+                      && $payment_type != MonriConstants::PAYMENT_TYPE_MONRI_COMPONENTS) {
                 $output .= $this->displayError($this->l("Invalid Payment Service, expected: Monri WebPay, Monri Components or Monri WSPay got '$payment_type'"));
 
                 return $output . $this->displayForm();
@@ -718,6 +783,26 @@ class Monri extends PaymentModule
     }
 
     /**
+     * Absolute link to this module's configuration page.
+     *
+     * AdminController::$currentIndex is a *relative* url ("index.php?controller=AdminModules"). Since
+     * PrestaShop 8 the configuration page is served by the Symfony route admin_module_configure_action
+     * (".../modules/manage/action/configure/monri"), so the browser resolves that relative url against
+     * ".../modules/manage/action/" and the form posts to a path that does not exist -> 404.
+     * Link::getAdminLink() goes through the legacy url converter and returns the migrated absolute url.
+     *
+     * @return string
+     */
+    protected function getConfigurationPageLink()
+    {
+        return $this->context->link->getAdminLink('AdminModules', false, [], [
+            'configure' => $this->name,
+            'tab_module' => $this->tab,
+            'module_name' => $this->name,
+        ]);
+    }
+
+    /**
      * @return mixed
      */
     public function displayForm()
@@ -732,7 +817,6 @@ class Monri extends PaymentModule
         $fields_form[0]['form'] = [
             'legend' => [
                 'title' => $this->l('General Settings'),
-                'image' => '../img/admin/edit.gif',
             ],
             'input' => [
                 [
@@ -881,7 +965,7 @@ class Monri extends PaymentModule
         $helper->module = $this;
         $helper->name_controller = $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
+        $helper->currentIndex = $this->getConfigurationPageLink();
 
         // Language
         $helper->default_form_language = $default_lang;
@@ -895,10 +979,10 @@ class Monri extends PaymentModule
         $helper->toolbar_btn = [
             'save' => [
                 'desc' => $this->l('Save'),
-                'href' => AdminController::$currentIndex . '&configure=' . $this->name . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+                'href' => $this->getConfigurationPageLink() . '&save' . $this->name . '&token=' . Tools::getAdminTokenLite('AdminModules'),
             ],
             'back' => [
-                'href' => AdminController::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+                'href' => $this->context->link->getAdminLink('AdminModulesManage'),
                 'desc' => $this->l('Back to list'),
             ],
         ];
@@ -1017,17 +1101,17 @@ class Monri extends PaymentModule
     private function generateInstallmentsForm($number_of_installments, $form_url, $new_inputs, $external_option)
     {
         $installmentForm = '
-	    <form action="'.$form_url.'" method="post">
-	        <label for="monri_installments">'.$this->l('Number of Installments:').'</label>
+	    <form action="' . $form_url . '" method="post">
+	        <label for="monri_installments">' . $this->l('Number of Installments:') . '</label>
 	        <select name="monri_installments" id="installments">';
         for ($i = 1; $i <= $number_of_installments; $i++) {
-            $installmentForm .= '<option value="'.$i.'">'.$i.'</option>';
+            $installmentForm .= '<option value="' . $i . '">' . $i . '</option>';
         }
 
         $installmentForm .= '</select>';
 
         foreach ($new_inputs as $name => $value) {
-            $installmentForm .= '<input type="hidden" name="'.htmlspecialchars($name).'" value="'.htmlspecialchars($value['value']).'">';
+            $installmentForm .= '<input type="hidden" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value['value']) . '">';
         }
         $installmentForm .= '</form>';
 
