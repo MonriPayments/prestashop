@@ -43,7 +43,7 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
                 return $this->setErrorTemplate('Missing Monri transaction.');
             }
             $posted_order_number = $transaction['order_number'] ?? null;
-            $cookie_order_number = Context::getContext()->cookie->__get('order_number') ?? null;
+            $cookie_order_number = $this->getCookieOrderNumber();
 
             if (!isset($posted_order_number, $cookie_order_number) || $posted_order_number !== $cookie_order_number) {
                 return $this->setErrorTemplate('Invalid order number.');
@@ -230,9 +230,22 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
         return $transaction;
     }
 
+    /**
+     * The order number written to the cookie server side when the payment was authorized.
+     *
+     * Unlike anything posted back by the browser this value cannot be chosen by whoever is sending
+     * the request, so it is the one to use whenever the order number is needed.
+     *
+     * @return string|null
+     */
+    private function getCookieOrderNumber()
+    {
+        return Context::getContext()->cookie->__get('order_number') ?? null;
+    }
+
     private function setErrorTemplate($message)
     {
-        $this->context->smarty->assign('shopping_cart_id', Tools::getValue('order_number'));
+        $this->context->smarty->assign('shopping_cart_id', $this->getCookieOrderNumber());
         $this->context->smarty->assign('error_message', $message);
         PrestaShopLogger::addLog($message);
         PrestaShopLogger::addLog(json_encode(Tools::getAllValues()));
