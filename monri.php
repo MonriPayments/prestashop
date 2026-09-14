@@ -52,6 +52,25 @@ class MonriConstants
     public const MONRI_COMPONENTS_SCRIPT_ENDPOINT = 'https://ipg.monri.com/dist/components.js';
 
     /**
+     * Cookie keys holding the cached Components authorization.
+     *
+     * PrestaShop renders every checkout step on every checkout request, so the paymentOptions hook
+     * fires on the address and shipping steps too. Without this cache each of those renders would
+     * open a fresh authorization against Monri and hand the shopper a different order number.
+     */
+    public const MONRI_COMPONENTS_CACHE_CLIENT_SECRET = 'monri_components_client_secret';
+    public const MONRI_COMPONENTS_CACHE_ORDER_NUMBER = 'monri_components_order_number';
+    public const MONRI_COMPONENTS_CACHE_CART_ID = 'monri_components_cart_id';
+    public const MONRI_COMPONENTS_CACHE_AMOUNT = 'monri_components_amount';
+    public const MONRI_COMPONENTS_CACHE_CURRENCY = 'monri_components_currency';
+    public const MONRI_COMPONENTS_CACHE_CREATED_AT = 'monri_components_created_at';
+
+    /**
+     * How long a cached authorization may be reused, in seconds.
+     */
+    public const MONRI_COMPONENTS_CACHE_TTL = 900;
+
+    /**
      * The oldest PrestaShop release this module supports.
      *
      * Single source of truth for both ps_versions_compliancy and the install-time check, so the
@@ -490,11 +509,26 @@ class Monri extends PaymentModule
             ? 'purchase' : 'authorize';
         $authenticity_token = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_PROD : MonriConstants::KEY_MERCHANT_AUTHENTICITY_TOKEN_TEST);
         $merchant_key = Configuration::get($mode == MonriConstants::MODE_PROD ? MonriConstants::KEY_MERCHANT_KEY_PROD : MonriConstants::KEY_MERCHANT_KEY_TEST);
-        //todo: save client secret in session so that if customer refreshes page we do not have to make another request
-        $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
         $allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
 
-        Context::getContext()->cookie->__set('order_number', $order_number);
+        $cached = $this->getCachedComponentsAuthorization($cart->id, $amount_in_minor_units, $currency_order->iso_code);
+
+        if ($cached !== null) {
+            // Same cart, same authorization: reuse it rather than opening a second one at Monri.
+            $this->renderComponentsPaymentOption(
+                $externalOption,
+                $cached['order_number'],
+                $cached['client_secret'],
+                $script_url,
+                $authenticity_token,
+                $cart,
+                $allow_installments,
+            );
+
+            return $externalOption;
+        }
+
+        $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
 
         $data = [
             'amount'           => $amount_in_minor_units,
@@ -539,6 +573,53 @@ class Monri extends PaymentModule
         }
         $client_secret = $response['client_secret'];
 
+        $this->cacheComponentsAuthorization(
+            $order_number,
+            $client_secret,
+            $cart->id,
+            $amount_in_minor_units,
+            $currency_order->iso_code,
+        );
+
+        $this->renderComponentsPaymentOption(
+            $externalOption,
+            $order_number,
+            $client_secret,
+            $script_url,
+            $authenticity_token,
+            $cart,
+            $allow_installments,
+        );
+
+        return $externalOption;
+    }
+
+    /**
+     * Fill in the Components payment option from an authorization, cached or freshly obtained.
+     *
+     * The order number is written to the cookie here rather than at the point it is generated: the
+     * MonriComponents controller trusts the cookie value over anything posted back by the browser,
+     * so it has to end up holding the order number the form was actually rendered with.
+     *
+     * @param PaymentOption $externalOption
+     * @param string $order_number
+     * @param string $client_secret
+     * @param string $script_url
+     * @param string $authenticity_token
+     * @param Cart $cart
+     * @param bool $allow_installments
+     */
+    private function renderComponentsPaymentOption(
+        $externalOption,
+        $order_number,
+        $client_secret,
+        $script_url,
+        $authenticity_token,
+        $cart,
+        $allow_installments
+    ) {
+        $this->context->cookie->__set('order_number', $order_number);
+
         $this->context->smarty->assign([
             'clientSecret' => $client_secret,
             'scriptUrl' => $script_url,
@@ -552,9 +633,80 @@ class Monri extends PaymentModule
             ->setModuleName($this->name)
             ->setCallToActionText($this->l('Pay using Monri Components - Kartično plaćanje'))
             ->setForm($this->generateEmbeddedForm());
+    }
 
+    /**
+     * Return a still-usable authorization for this cart, or null when a new one has to be opened.
+     *
+     * An authorization is tied to the cart, amount and currency it was created with, so it is only
+     * reusable while all three still match - change any of them and Monri would be asked to settle a
+     * payment for the wrong sum, or the controller would derive the wrong cart from the order number.
+     * The age check is there because an authorization does not stay open indefinitely; a shopper who
+     * leaves checkout open for half an hour gets a fresh one rather than a stale secret the components
+     * script will fail on.
+     *
+     * @param int $cart_id
+     * @param int $amount_in_minor_units
+     * @param string $currency_iso
+     *
+     * @return array|null ['order_number' => string, 'client_secret' => string]
+     */
+    private function getCachedComponentsAuthorization($cart_id, $amount_in_minor_units, $currency_iso)
+    {
+        $cookie = $this->context->cookie;
 
-        return $externalOption;
+        $client_secret = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_CLIENT_SECRET);
+        $order_number = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_ORDER_NUMBER);
+        $cached_cart_id = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_CART_ID);
+        $amount = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_AMOUNT);
+        $currency = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_CURRENCY);
+        $created_at = $cookie->__get(MonriConstants::MONRI_COMPONENTS_CACHE_CREATED_AT);
+
+        // Cookie::__get answers false for keys that were never written, so empty() covers both.
+        if (empty($client_secret) || empty($order_number) || empty($created_at)) {
+            return null;
+        }
+
+        if ((int) $cached_cart_id !== (int) $cart_id
+            || (int) $amount !== (int) $amount_in_minor_units
+            || (string) $currency !== (string) $currency_iso) {
+            return null;
+        }
+
+        if (time() - (int) $created_at > MonriConstants::MONRI_COMPONENTS_CACHE_TTL) {
+            return null;
+        }
+
+        return [
+            'order_number' => (string) $order_number,
+            'client_secret' => (string) $client_secret,
+        ];
+    }
+
+    /**
+     * Remember an authorization so the remaining checkout steps can render without calling Monri.
+     *
+     * @param string $order_number
+     * @param string $client_secret
+     * @param int $cart_id
+     * @param int $amount_in_minor_units
+     * @param string $currency_iso
+     */
+    private function cacheComponentsAuthorization(
+        $order_number,
+        $client_secret,
+        $cart_id,
+        $amount_in_minor_units,
+        $currency_iso
+    ) {
+        $cookie = $this->context->cookie;
+
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_CLIENT_SECRET, $client_secret);
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_ORDER_NUMBER, $order_number);
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_CART_ID, (int) $cart_id);
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_AMOUNT, (int) $amount_in_minor_units);
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_CURRENCY, $currency_iso);
+        $cookie->__set(MonriConstants::MONRI_COMPONENTS_CACHE_CREATED_AT, time());
     }
 
     public function getMonriWSPayExternalPaymentOption()
