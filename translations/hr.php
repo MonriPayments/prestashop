@@ -1,7 +1,7 @@
 <?php
 
 global $_MODULE;
-$_MODULE = array();
+$_MODULE = [];
 $_MODULE['<{monri}prestashop>monri_c63e00415b8dfaccb614f496fe302005'] = 'Prihvatite sva plaćanja koja nudi Monri';
 $_MODULE['<{monri}prestashop>monri_876f23178c29dc2552c0b48bf23cd9bd'] = 'Jeste li sigurni da želite deinstalirati?';
 $_MODULE['<{monri}prestashop>monri_a02758d758e8bec77a33d7f392eb3f8a'] = 'Za ovaj modul nije postavljena valuta.';

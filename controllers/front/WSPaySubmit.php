@@ -42,8 +42,8 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $mode = Configuration::get(MonriConstants::KEY_MODE);
         $secret_key = Monri::getMonriWSPaySecretKey();
         $amount = number_format($cart->getOrderTotal(), 2, ',', '');
-        $form_url = $mode == MonriConstants::MODE_PROD ?
-            MonriConstants::MONRI_WSPAY_PRODUCTION_URL : MonriConstants::MONRI_WSPAY_TEST_URL;
+        $form_url = $mode == MonriConstants::MODE_PROD
+            ? MonriConstants::MONRI_WSPAY_PRODUCTION_URL : MonriConstants::MONRI_WSPAY_TEST_URL;
 
         $prefix = Tools::getValue('monri_module_name', 'monri');
 
@@ -64,7 +64,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             'CustomerCountry',
             'CustomerPhone',
             'CustomerEmail',
-	        'PaymentPlan'
+            'PaymentPlan',
         ];
 
         $inputs = [];
@@ -89,7 +89,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
         $inputs['TotalAmount'] = [
             'name' => 'TotalAmount',
             'type' => 'hidden',
-            'value' => $amount
+            'value' => $amount,
         ];
 
         $number_of_installments = Tools::getValue('monri_installments') ? Tools::getValue('monri_installments') : 1;
@@ -100,7 +100,7 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
             $inputs['PaymentPlan'] = [
                 'name' => 'PaymentPlan',
                 'type' => 'hidden',
-                'value' => $number_of_installments
+                'value' => $number_of_installments,
             ];
         }
 
@@ -119,10 +119,10 @@ class MonriWSPaySubmitModuleFrontController extends ModuleFrontController
     private function generateSignature($cart_id, $formatted_amount, $shop_id, $secret_key)
     {
         $clean_total_amount = str_replace(',', '', $formatted_amount);
-        $signature =
-        $shop_id . $secret_key .
-        $cart_id . $secret_key .
-        $clean_total_amount . $secret_key;
+        $signature
+        = $shop_id . $secret_key
+        . $cart_id . $secret_key
+        . $clean_total_amount . $secret_key;
 
         return hash('sha512', $signature);
     }
