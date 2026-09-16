@@ -209,6 +209,10 @@ class MonriComponentsModuleFrontController extends ModuleFrontController
             $transaction[str_replace('-', '_', $name)] = (string) $value;
         }
 
+        PrestaShopLogger::addLog(
+            "Monri /orders/show response for order $order_number: " . json_encode($transaction),
+        );
+
         $status = $transaction['status'] ?? '';
         $response_code = $transaction['response_code'] ?? '';
 
