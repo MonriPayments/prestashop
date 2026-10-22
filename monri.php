@@ -40,6 +40,8 @@ class MonriConstants
 
     public const MONRI_ALLOWED_INSTALLMENTS = [6, 12, 24, 36];
 
+    public const MONRI_WEBPAY_LANGUAGES = ['en', 'es', 'ba', 'hr'];
+
     public const MONRI_WEBPAY_PRODUCTION_URL = 'https://ipg.monri.com';
     public const MONRI_WEBPAY_TEST_URL = 'https://ipgtest.monri.com';
     public const MONRI_WSPAY_PRODUCTION_URL = 'https://form.wspay.biz/authorization.aspx';
@@ -297,6 +299,24 @@ class Monri extends PaymentModule
         return false;
     }
 
+    /**
+     * WebPay only renders in en, es, ba and hr. Map the shop language onto one of those,
+     * falling back to en for anything the gateway does not support.
+     *
+     * @return string
+     */
+    private function monriWebPayLanguage()
+    {
+        $iso_code = strtolower($this->context->language->iso_code);
+
+        // PrestaShop ships Bosnian as "bs", WebPay expects "ba".
+        if ($iso_code === 'bs') {
+            $iso_code = 'ba';
+        }
+
+        return in_array($iso_code, MonriConstants::MONRI_WEBPAY_LANGUAGES, true) ? $iso_code : 'en';
+    }
+
     public function getMonriWebPayExternalPaymentOption($params)
     {
         $externalOption = new PaymentOption();
@@ -317,6 +337,7 @@ class Monri extends PaymentModule
         $currency = new Currency($cart->id_currency);
         $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
         $allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
+        $language = $this->monriWebPayLanguage();
 
         $inputs = [
             'utf8' => [
@@ -417,7 +438,7 @@ class Monri extends PaymentModule
             'language' => [
                 'name' => 'language',
                 'type' => 'hidden',
-                'value' => 'en',
+                'value' => $language,
             ],
             'tokenize_pan_until' => [
                 'name' => 'tokenize_pan_until',
