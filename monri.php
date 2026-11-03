@@ -40,6 +40,8 @@ class MonriConstants
 
     public const MONRI_ALLOWED_INSTALLMENTS = [6, 12, 24, 36];
 
+    public const MONRI_FORM_LANGUAGES = ['en', 'es', 'ba-hr', 'hr', 'sr'];
+
     public const MONRI_WEBPAY_PRODUCTION_URL = 'https://ipg.monri.com';
     public const MONRI_WEBPAY_TEST_URL = 'https://ipgtest.monri.com';
     public const MONRI_WSPAY_PRODUCTION_URL = 'https://form.wspay.biz/authorization.aspx';
@@ -201,7 +203,7 @@ class Monri extends PaymentModule
     {
         $this->name = 'monri';
         $this->tab = 'payments_gateways';
-        $this->version = '1.5.0';
+        $this->version = '1.5.1';
         $this->ps_versions_compliancy = ['min' => MonriConstants::MINIMUM_PRESTASHOP_VERSION, 'max' => _PS_VERSION_];
         $this->author = 'Monri';
         $this->controllers = ['validation', 'success', 'cancel', 'webPaySubmit', 'webPaySuccess', 'WSPaySubmit', 'WSPaySuccess', 'error'];
@@ -297,6 +299,26 @@ class Monri extends PaymentModule
         return false;
     }
 
+    /**
+     * Monri only renders its forms in en, es, ba-hr, hr and sr. Map the shop language onto one of
+     * those, falling back to en for anything the gateway does not support.
+     *
+     * Used for both the WebPay redirect form ("language" field) and the Components locale.
+     *
+     * @return string
+     */
+    private function monriFormLanguage()
+    {
+        $iso_code = strtolower($this->context->language->iso_code);
+
+        // PrestaShop ships Bosnian as "bs", Monri expects "ba-hr".
+        if ($iso_code === 'bs' || $iso_code === 'ba') {
+            $iso_code = 'ba-hr';
+        }
+
+        return in_array($iso_code, MonriConstants::MONRI_FORM_LANGUAGES, true) ? $iso_code : 'en';
+    }
+
     public function getMonriWebPayExternalPaymentOption($params)
     {
         $externalOption = new PaymentOption();
@@ -317,6 +339,7 @@ class Monri extends PaymentModule
         $currency = new Currency($cart->id_currency);
         $order_number = $mode == MonriConstants::MODE_PROD ? $cart->id : $cart->id . '_' . time();
         $allow_installments = Configuration::get(MonriConstants::MONRI_INSTALLMENTS) === MonriConstants::MONRI_INSTALLMENTS_YES;
+        $language = $this->monriFormLanguage();
 
         $inputs = [
             'utf8' => [
@@ -417,7 +440,7 @@ class Monri extends PaymentModule
             'language' => [
                 'name' => 'language',
                 'type' => 'hidden',
-                'value' => 'en',
+                'value' => $language,
             ],
             'tokenize_pan_until' => [
                 'name' => 'tokenize_pan_until',
@@ -627,6 +650,7 @@ class Monri extends PaymentModule
             'customerAddressId' => $cart->id_address_delivery,
             'allowInstallments' => $allow_installments,
             'customerIp' => Tools::getRemoteAddr(),
+            'locale' => $this->monriFormLanguage(),
         ]);
 
         $externalOption

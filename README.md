@@ -27,6 +27,9 @@ You can find additional information regarding Privacy policy of Monri payments o
 
 ## Changelog
 
+= 1.5.1 - 2026-10-29 =
+* Change default language for Webpay/Components based on store language
+
 = 1.5.0 - 2026-9-9 =
 * Improved Monri Component status check
 * Minor Security improvements and code cleanup

@@ -38,7 +38,7 @@
 <script src='{$scriptUrl}'></script>
 <script type="text/javascript">
     var monriClientSecret = '{$clientSecret|escape:'javascript'}';
-    var monri = Monri('{$authenticityToken|escape:'javascript'}');
+    var monri = Monri('{$authenticityToken|escape:'javascript'}', {ldelim}locale: '{$locale|escape:'javascript'}'{rdelim});
     var allowInstallments = {if $allowInstallments}true{else}false{/if};
     {literal}
     const components = monri.components({"clientSecret": monriClientSecret});
